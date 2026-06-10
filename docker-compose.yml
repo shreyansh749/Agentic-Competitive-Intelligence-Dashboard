@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: ci_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ci_network
+
+  python-agent:
+    build:
+      context: ./python-agent
+      dockerfile: Dockerfile
+    container_name: ci_python
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./python-agent/.env
+    environment:
+      - MONGODB_URI=mongodb+srv://shreyansh:shreyansh123@cluster0.gilw3hu.mongodb.net/?appName=Cluster0
+    depends_on:
+      - mongo
+    networks:
+      - ci_network
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+  node-server:
+    build:
+      context: ./node-server
+      dockerfile: Dockerfile
+    container_name: ci_node
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./node-server/.env
+    environment:
+      - PYTHON_AGENT_URL=http://python-agent:8000
+      - MONGODB_URI=mongodb+srv://shreyansh:shreyansh123@cluster0.gilw3hu.mongodb.net/?appName=Cluster0
+    depends_on:
+      - python-agent
+    networks:
+      - ci_network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: ci_react
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - node-server
+    networks:
+      - ci_network
+
+networks:
+  ci_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
