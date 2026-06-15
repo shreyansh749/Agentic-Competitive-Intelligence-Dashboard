@@ -3,6 +3,7 @@ import requests
 import random
 import re  # HTML cleaning ke liye
 from datetime import datetime, timezone
+import os
 
 def clean_html(raw_html: str) -> str:
     """HTML tags aur extra whitespace ko clean karke simple text return karega"""
@@ -93,3 +94,27 @@ def fetch_blog_rss(blog_rss_url: str) -> str:
         return "BLOG_RSS_ERROR: Network timeout while fetching blog."
     except Exception as e:
         return f"BLOG_RSS_ERROR: {str(e)}"
+
+def fetch_newsapi(company: str) -> str:
+    key = os.getenv("NEWS_API_KEY")
+    if not key:
+        return ""
+    try:
+        url = "https://newsapi.org/v2/everything"
+        params = {
+            "q":        company,
+            "apiKey":   key,
+            "pageSize": 5,
+            "sortBy":   "publishedAt",
+            "language": "en"
+        }
+        res = requests.get(url, params=params, timeout=10).json()
+        articles = res.get("articles", [])
+        if not articles:
+            return ""
+        result = []
+        for a in articles:
+            result.append(f"TITLE: {a['title']}\nSOURCE: {a['source']['name']}\nDESC: {a['description']}")
+        return "\n---\n".join(result)
+    except:
+        return ""

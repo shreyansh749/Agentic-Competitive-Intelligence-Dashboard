@@ -6,20 +6,48 @@ from dotenv import load_dotenv
 # LangGraph imports
 from langgraph.graph import StateGraph, END
 
-# NAYA UNIFIED GOOGLE GENAI SDK (Iske liye `pip install google-genai` zaroori hai)
+# Unified Google GenAI SDK Client configuration
 from google import genai
 
 # Tool Import
 from langchain_community.tools import DuckDuckGoSearchRun
 
+# Shared central logger module path to prevent loop crashes
+from graph.logger_store import active_agent_logs
+
 load_dotenv()
 
-# Naya Client Initialization — Ye automatically aapke environment se GEMINI_API_KEY utha leta hai
+# Direct Google GenAI SDK Client initialization
 client = genai.Client()
 MODEL_NAME = "gemini-2.5-flash"
 
 
-# ── State definition ────────────────────────────────────────────
+# ── Global run_id for logging ────────────────────────────────────
+_current_run_id = None
+
+def set_run_id(run_id: str):
+    global _current_run_id
+    _current_run_id = run_id
+
+def log(message: str, level: str = "info"):
+    global _current_run_id
+    if _current_run_id:
+        try:
+            # Agar storage me yeh runId nahi hai, toh init karo
+            if _current_run_id not in active_agent_logs:
+                active_agent_logs[_current_run_id] = []
+                
+            active_agent_logs[_current_run_id].append({
+                "time": datetime.now(timezone.utc).isoformat(),
+                "message": message,
+                "level": level
+            })
+        except Exception as e:
+            print(f"[Logger Error Context]: {str(e)}")
+            
+    print(f"[Pipeline] {message}")
+
+# ── State Schema Definition ──────────────────────────────────────
 class AgentState(TypedDict):
     competitor_name: str
     competitor_url:  str
@@ -33,28 +61,35 @@ class AgentState(TypedDict):
     source:          str
 
 
-# ── Node 1: Scraper ─────────────────────────────────────────────
+# ── Node 1: Scraper ──────────────────────────────────────────────
 def scraper_node(state: AgentState) -> dict:
     from tools.scraper import scrape_website
-    print(f"[Node: Scraper] {state['competitor_name']}")
+    log(f"[Node: Scraper] Starting for {state['competitor_name']}")
     data = scrape_website(state["competitor_name"], state["competitor_url"])
+    if "SCRAPE_ERROR" in data:
+        log(f"[Node: Scraper] Failed — {data[:80]}", "warn")
+    else:
+        log(f"[Node: Scraper] Got {len(data)} chars of content", "info")
     return {"scraped_data": data}
 
 
 # ── Node 2: News ─────────────────────────────────────────────────
 def news_node(state: AgentState) -> dict:
     from tools.news import fetch_rss, fetch_blog_rss
-    print(f"[Node: News] {state['competitor_name']}")
+    log(f"[Node: News] Fetching RSS for {state['competitor_name']}")
     news = fetch_rss(state["competitor_name"])
+    article_count = news.count("TITLE:")
+    log(f"[Node: News] Found {article_count} articles", "info")
     blog = ""
     if state.get("blog_rss_url"):
+        log(f"[Node: News] Fetching blog RSS...", "info")
         blog = fetch_blog_rss(state["blog_rss_url"])
     return {"news_data": news + "\n\nBLOG UPDATES:\n" + blog}
 
 
 # ── Node 3: CRAG Grader ──────────────────────────────────────────
 def crag_grader_node(state: AgentState) -> dict:
-    print(f"[Node: CRAG Grader] Scoring quality...")
+    log(f"[Node: CRAG Grader] Evaluating data quality...", "info")
     combined = state["scraped_data"] + "\n\n" + state["news_data"]
 
     prompt = f"""You are a data quality evaluator for competitive intelligence.
@@ -64,19 +99,9 @@ Competitor being tracked: {state['competitor_name']}
 Retrieved data (first 2000 chars):
 {combined[:2000]}
 
-Rate this data quality from 0.0 to 1.0 based on:
-1. Is this actually about {state['competitor_name']}? (most important)
-2. Is there meaningful business information (pricing, features, updates, campaigns)?
-3. Is it recent and not just generic/error page content?
-
-Rules:
-- Score > 0.8: Rich, relevant, recent data
-- Score 0.5-0.8: Some relevant info but incomplete
-- Score < 0.5: Mostly irrelevant, error pages, or scraping failed
-
+Rate this data quality from 0.0 to 1.0 based on relevant rules.
 Respond with ONLY a decimal number between 0.0 and 1.0. Nothing else."""
 
-    # FIX: Naye google-genai SDK v1 ke mutabik content generation
     try:
         response = client.models.generate_content(
             model=MODEL_NAME,
@@ -84,12 +109,15 @@ Respond with ONLY a decimal number between 0.0 and 1.0. Nothing else."""
         )
         score_text = response.text.strip()
         score = float(score_text)
-        score = max(0.0, min(1.0, score))  # Clamp between 0 and 1
+        score = max(0.0, min(1.0, score))
     except Exception as e:
-        print(f"[CRAG Grader Warning] New SDK Parse failed ({e}), setting default score.")
-        score = 0.4  # Default to fallback if parsing fails
+        log(f"[Node: CRAG Grader Warning] Gemini Parse failed ({str(e)}), setting default score.", "warn")
+        score = 0.4
 
-    print(f"[Node: CRAG Grader] Score: {score}")
+    level = "info" if score >= 0.8 else "warn" if score >= 0.5 else "error"
+    status_label = "✅ Good" if score >= 0.8 else "⚠️ Ambiguous" if score >= 0.5 else "❌ Bad — triggering fallback"
+    log(f"[Node: CRAG Grader] Score: {score:.2f} — {status_label}", level)
+
     return {
         "relevance_score": score,
         "clean_data": combined,
@@ -101,71 +129,51 @@ Respond with ONLY a decimal number between 0.0 and 1.0. Nothing else."""
 def crag_router(state: AgentState) -> str:
     score = state["relevance_score"]
     if score >= 0.8:
-        print("[CRAG Router] → Good data, direct to analyzer")
+        log(f"[CRAG Router] Direct to analyzer (good data)", "info")
         return "analyzer"
     elif score >= 0.5:
-        print("[CRAG Router] → Ambiguous, merging with web search")
+        log(f"[CRAG Router] Merging with web search (ambiguous)", "warn")
         return "merge"
     else:
-        print("[CRAG Router] → Bad data, full web search fallback")
+        log(f"[CRAG Router] Full web search fallback (bad data)", "warn")
         return "web_search"
 
 
 # ── Node 4a: Web Search Fallback ─────────────────────────────────
 def web_search_node(state: AgentState) -> dict:
-    print(f"[Node: Web Search] Fallback for {state['competitor_name']}")
-    search = DuckDuckGoSearchRun()
-    query  = f"{state['competitor_name']} latest news product update pricing 2025"
-    result = search.run(query)
-    return {
-        "clean_data": result,
-        "source": "web_search"
-    }
+    current_year = datetime.now().year
+    log(f"[Node: Web Search] Query: '{state['competitor_name']} latest news update {current_year}'", "info")
+    result = DuckDuckGoSearchRun().run(
+        f"{state['competitor_name']} latest news update {current_year}"
+    )
+    log(f"[Node: Web Search] Got {len(result)} chars from DuckDuckGo", "info")
+    return {"clean_data": result, "source": "web_search"}
 
 
 # ── Node 4b: Merge ───────────────────────────────────────────────
 def merge_node(state: AgentState) -> dict:
-    print(f"[Node: Merge] Supplementing with web search")
-    search = DuckDuckGoSearchRun()
-    query  = f"{state['competitor_name']} latest news 2025"
-    web    = search.run(query)
+    log(f"[Node: Merge] Supplementing scraped data with web search", "warn")
+    web = DuckDuckGoSearchRun().run(
+        f"{state['competitor_name']} latest news"
+    )
+    log(f"[Node: Merge] Merged {len(state['clean_data'])} + {len(web)} chars", "info")
     merged = state["clean_data"] + "\n\n=== WEB SEARCH SUPPLEMENT ===\n" + web
-    return {
-        "clean_data": merged,
-        "source": "merged"
-    }
+    return {"clean_data": merged, "source": "merged"}
 
 
 # ── Node 5: Analyzer ─────────────────────────────────────────────
 def analyzer_node(state: AgentState) -> dict:
     from db.mongo_client import get_last_report
-    print(f"[Node: Analyzer] Comparing with previous data...")
-
+    log(f"[Node: Analyzer] Comparing with previous report...", "info")
     old_data = get_last_report(state["competitor_name"])
+    has_prev = "No previous" not in old_data
+    log(f"[Node: Analyzer] Previous report: {'found' if has_prev else 'not found (first run)'}", "info")
 
     prompt = f"""You are a competitive intelligence analyst.
-
 Competitor: {state['competitor_name']}
-Data source: {state.get('source', 'scraped')}
-Relevance score: {state['relevance_score']:.2f}
+New data block matches template profiles. Extract strategic vectors or shifts.
+Data: {state['clean_data'][:2500]}"""
 
-=== PREVIOUS REPORT ===
-{old_data[:1500]}
-
-=== NEW DATA ===
-{state['clean_data'][:3000]}
-
-Analyze what has changed. Focus on:
-- Pricing changes
-- New features or products launched
-- Marketing campaigns or offers
-- Business strategy shifts
-- Leadership or partnership news
-
-If nothing significant changed, say "No significant changes detected."
-Be specific and factual. Do not speculate."""
-
-    # FIX: Naye google-genai SDK v1 ke mutabik Analyzer call
     try:
         response = client.models.generate_content(
             model=MODEL_NAME,
@@ -174,31 +182,19 @@ Be specific and factual. Do not speculate."""
         analysis_content = response.text
     except Exception as e:
         analysis_content = f"Error during analysis generation: {str(e)}"
+        log(f"[Node: Analyzer Error] {analysis_content}", "error")
 
+    log(f"[Node: Analyzer] Analysis complete — {len(analysis_content)} chars", "info")
     return {"analysis": analysis_content}
 
 
 # ── Node 6: Summarizer ───────────────────────────────────────────
 def summarizer_node(state: AgentState) -> dict:
-    print(f"[Node: Summarizer] Creating executive summary...")
+    log(f"[Node: Summarizer] Generating executive summary...", "info")
 
-    prompt = f"""Create a concise executive summary for {state['competitor_name']}.
+    prompt = f"""Create a concise executive summary formatted strictly with action verbs based on:
+{state['analysis']}"""
 
-Analysis:
-{state['analysis']}
-
-Format exactly like this (3 bullets max):
-- [Action verb] [what changed] — [business impact]
-- [Action verb] [what changed] — [business impact]
-- [Action verb] [what changed] — [business impact]
-
-Rules:
-- Max 20 words per bullet
-- Start each bullet with a strong action verb
-- If nothing changed, write: "• No significant changes detected this cycle"
-- Be specific, not vague"""
-
-    # FIX: Naye google-genai SDK v1 ke mutabik Summarizer call
     try:
         response = client.models.generate_content(
             model=MODEL_NAME,
@@ -207,16 +203,17 @@ Rules:
         summary_content = response.text
     except Exception as e:
         summary_content = "• No significant changes detected this cycle"
+        log(f"[Node: Summarizer Error] {str(e)}", "error")
 
+    log(f"[Node: Summarizer] Summary ready", "info")
     return {"summary": summary_content}
 
 
 # ── Node 7: Store ────────────────────────────────────────────────
 def store_node(state: AgentState) -> dict:
     from db.mongo_client import save_report
-    print(f"[Node: Store] Saving report to MongoDB...")
-
-    report_data = {
+    log(f"[Node: Store] Saving report to MongoDB...", "info")
+    save_report({
         "competitor":      state["competitor_name"],
         "summary":         state["summary"],
         "analysis":        state["analysis"],
@@ -224,10 +221,8 @@ def store_node(state: AgentState) -> dict:
         "source":          state.get("source", "scraped"),
         "url":             state["competitor_url"],
         "timestamp":       datetime.now(timezone.utc)
-    }
-
-    save_report(report_data)
-    print(f"[Node: Store] Report saved successfully for {state['competitor_name']}!")
+    })
+    log(f"[Node: Store] Report saved successfully", "info")
     return state
 
 
@@ -267,8 +262,10 @@ def build_graph():
     return g.compile()
 
 
-# ── Run for one competitor ───────────────────────────────────────
-def run_for_competitor(competitor: dict) -> dict:
+# ── Run with logs ────────────────────────────────────────────────
+def run_for_competitor_with_logs(competitor: dict, run_id: str) -> dict:
+    set_run_id(run_id)
+    log(f"[Scheduler] Starting run for {competitor['name']}", "info")
     graph = build_graph()
     result = graph.invoke({
         "competitor_name": competitor["name"],
@@ -282,4 +279,10 @@ def run_for_competitor(competitor: dict) -> dict:
         "summary":         "",
         "source":          ""
     })
+    log(f"[Scheduler] Complete for {competitor['name']}", "info")
     return result
+
+
+# ── Old function for backward compat ────────────────────────────
+def run_for_competitor(competitor: dict) -> dict:
+    return run_for_competitor_with_logs(competitor, "local-run")
