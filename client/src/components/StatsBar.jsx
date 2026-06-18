@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { reportsAPI } from "../services/api";
-import { FileText, Building2, Star } from "lucide-react";
+import { FileText, Building2, Star, Zap } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function StatsBar() {
   const [stats, setStats] = useState(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    reportsAPI.getStats().then((r) => setStats(r.data));
-  }, []);
+    const userId = user?._id || user?.id;
+    if (!userId) return;
+    reportsAPI
+      .getStats(userId)
+      .then((r) => setStats(r.data))
+      .catch((e) => console.error("Stats error:", e));
+  }, [user]);
 
   if (!stats) return null;
 
@@ -27,6 +34,11 @@ export default function StatsBar() {
       label: "Avg Data Quality",
       value: `${(stats.avg_relevance_score * 100).toFixed(0)}%`,
     },
+    {
+      icon: <Zap size={16} />,
+      label: "Today's Runs",
+      value: stats.runs_today ?? 0,
+    }, 
   ];
 
   return (

@@ -1,26 +1,25 @@
 const axios = require("axios");
-
-const PYTHON_URL = process.env.PYTHON_AGENT_URL || "http://localhost:8000";
+const PYTHON = process.env.PYTHON_AGENT_URL || "http://localhost:8000";
 
 const agentBridge = {
-  // ── GET: Fetch Analytics Reports ─────────────────────────────────
-  getReports: async (competitor = null, limit = 50) => {
+  getReports: async (competitor = null, limit = 50, userId) => {
     try {
       const params = { limit };
       if (competitor) params.competitor = competitor;
-
-      const res = await axios.get(`${PYTHON_URL}/reports`, { params });
+      if (userId) params.user_id = userId;
+      const res = await axios.get(`${PYTHON}/reports`, { params });
       return res.data;
     } catch (error) {
       console.error(`[AgentBridge Error - getReports]: ${error.message}`);
-      throw error; // Let Express controller handle the HTTP status conversion
+      throw error;
     }
   },
 
-  // ── GET: Fetch Active Competitors Profiles ───────────────────────
-  getCompetitors: async () => {
+  getCompetitors: async (userId) => {
     try {
-      const res = await axios.get(`${PYTHON_URL}/competitors`);
+      const params = {};
+      if (userId) params.user_id = userId;
+      const res = await axios.get(`${PYTHON}/competitors`, { params });
       return res.data;
     } catch (error) {
       console.error(`[AgentBridge Error - getCompetitors]: ${error.message}`);
@@ -28,10 +27,10 @@ const agentBridge = {
     }
   },
 
-  // ── POST: Register New Target Competitor ─────────────────────────
   addCompetitor: async (data) => {
     try {
-      const res = await axios.post(`${PYTHON_URL}/competitors`, data);
+      console.log("[AgentBridge] Adding competitor:", data);
+      const res = await axios.post(`${PYTHON}/competitors`, data);
       return res.data;
     } catch (error) {
       console.error(`[AgentBridge Error - addCompetitor]: ${error.message}`);
@@ -39,27 +38,24 @@ const agentBridge = {
     }
   },
 
-  // ── POST: Safely Trigger LangGraph Execution Workflow ──────────
-  runAgent: async (competitorName = null) => {
+  runAgent: async (competitorName = null, userId) => {
     try {
-      // Configuration structure inject parameters clearly for FastAPI Query injection
-      const config = {
-        params: competitorName ? { competitor_name: competitorName } : {},
-      };
-
-      // POST format pattern: axios.post(url, data, config)
-      const res = await axios.post(`${PYTHON_URL}/run-agent`, null, config);
-      return res.data; // Securely returns layout: { run_id, message, competitors }
+      const params = {};
+      if (competitorName) params.competitor_name = competitorName;
+      if (userId) params.user_id = userId;
+      const res = await axios.post(`${PYTHON}/run-agent`, null, { params });
+      return res.data;
     } catch (error) {
       console.error(`[AgentBridge Error - runAgent]: ${error.message}`);
       throw error;
     }
   },
 
-  // ── GET: Compile Summary Metadata Analytics ──────────────────────
-  getStats: async () => {
+  getStats: async (userId) => {
     try {
-      const res = await axios.get(`${PYTHON_URL}/stats`);
+      const params = {};
+      if (userId) params.user_id = userId;
+      const res = await axios.get(`${PYTHON}/stats`, { params });
       return res.data;
     } catch (error) {
       console.error(`[AgentBridge Error - getStats]: ${error.message}`);

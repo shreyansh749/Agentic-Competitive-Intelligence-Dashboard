@@ -59,6 +59,7 @@ class AgentState(TypedDict):
     analysis:        str
     summary:         str
     source:          str
+    user_id:         str  
 
 
 # ── Node 1: Scraper ──────────────────────────────────────────────
@@ -165,7 +166,7 @@ def merge_node(state: AgentState) -> dict:
 def analyzer_node(state: AgentState) -> dict:
     from db.mongo_client import get_last_report
     log(f"[Node: Analyzer] Comparing with previous report...", "info")
-    old_data = get_last_report(state["competitor_name"])
+    old_data = get_last_report(state["competitor_name"], state["user_id"])
     has_prev = "No previous" not in old_data
     log(f"[Node: Analyzer] Previous report: {'found' if has_prev else 'not found (first run)'}", "info")
 
@@ -220,6 +221,7 @@ def store_node(state: AgentState) -> dict:
         "relevance_score": state["relevance_score"],
         "source":          state.get("source", "scraped"),
         "url":             state["competitor_url"],
+        "user_id":         state.get("user_id", ""),
         "timestamp":       datetime.now(timezone.utc)
     })
     log(f"[Node: Store] Report saved successfully", "info")
@@ -271,6 +273,7 @@ def run_for_competitor_with_logs(competitor: dict, run_id: str) -> dict:
         "competitor_name": competitor["name"],
         "competitor_url":  competitor["url"],
         "blog_rss_url":    competitor.get("blog_rss_url", ""),
+        "user_id":         competitor.get("user_id", ""),
         "scraped_data":    "",
         "news_data":       "",
         "relevance_score": 0.0,

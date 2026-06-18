@@ -1,22 +1,27 @@
 import axios from "axios";
 
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-
-const api = axios.create({ baseURL: BASE });
+const api = axios.create({
+  baseURL: BASE,
+  withCredentials: true,
+});
 
 export const reportsAPI = {
-  getAll: (competitor, limit) =>
-    api.get("/reports", { params: { competitor, limit } }),
+  getAll: (competitor, limit, userId) =>
+    api.get("/reports", { params: { competitor, limit, userId } }),
 
-  getCompetitors: () => api.get("/competitors"),
+  getCompetitors: (userId) => api.get("/competitors", { params: { userId } }),
 
-  addCompetitor: (data) => api.post("/competitors", data),
+  addCompetitor: (data, userId) =>
+    api.post(`/competitors?userId=${userId}`, data),
 
-  runAgent: (competitorName) =>
+  runAgent: (competitorName, userId) =>
     api.post("/run-agent", null, {
-      params: competitorName ? { competitor_name: competitorName } : {},
+      params: competitorName
+        ? { competitor_name: competitorName, userId }
+        : { userId },
     }),
 
-  getStats: () => api.get("/stats"),
+  getStats: (userId) => api.get("/stats", { params: { userId } }),
 };

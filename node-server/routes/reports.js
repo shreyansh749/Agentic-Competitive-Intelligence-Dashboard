@@ -1,123 +1,99 @@
 const router = require("express").Router();
 const bridge = require("../services/agentBridge");
 
-// ── GET: Fetch Analytics Reports ─────────────────────────────────
+// ── GET Reports ───────────────────────────────────────────────
 router.get("/reports", async (req, res) => {
   try {
-    const { competitor, limit } = req.query;
-    const data = await bridge.getReports(competitor, limit);
-    return res.json(data);
-  } catch (error) {
-    console.error(`[Express Router Error - GET /reports]: ${error.message}`);
-    return res
-      .status(500)
-      .json({ error: "Failed to retrieve reports from upstream service." });
+    const { competitor, limit, userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    const data = await bridge.getReports(competitor, limit, userId);
+    res.json(data);
+  } catch (e) {
+    console.error("[GET /reports]:", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ── GET: Fetch Registered Competitors ────────────────────────────
+// ── GET Competitors ───────────────────────────────────────────
 router.get("/competitors", async (req, res) => {
   try {
-    const data = await bridge.getCompetitors();
-    return res.json(data);
-  } catch (error) {
-    console.error(
-      `[Express Router Error - GET /competitors]: ${error.message}`,
-    );
-    return res
-      .status(500)
-      .json({ error: "Failed to retrieve competitors list." });
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    const data = await bridge.getCompetitors(userId);
+    res.json(data);
+  } catch (e) {
+    console.error("[GET /competitors]:", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ── POST: Register New Competitor Profile ────────────────────────
+// ── POST Competitor ───────────────────────────────────────────
 router.post("/competitors", async (req, res) => {
   try {
-    const data = await bridge.addCompetitor(req.body);
-    return res.json(data);
-  } catch (error) {
-    console.error(
-      `[Express Router Error - POST /competitors]: ${error.message}`,
-    );
-    return res
-      .status(500)
-      .json({ error: "Schema payload parsing validation failed." });
+    const { userId } = req.query;
+    //console.log("[Route] userId from query:", userId); // debug
+    console.log("[Route] body:", req.body);  
+    if (!userId) return res.status(400).json({ error: "userId required" });
+
+    console.log("[Route] data ", { ...req.body, user_id:userId }); // debug
+    const data = await bridge.addCompetitor({ ...req.body, user_id:userId });
+    res.json(data);
+  } catch (e) {
+    console.error("[POST /competitors]:", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ── POST: Manually Trigger LangGraph Core Agent ──────────────────
+// ── POST Run Agent ────────────────────────────────────────────
 router.post("/run-agent", async (req, res) => {
   try {
-    const { competitor_name } = req.query;
-    const data = await bridge.runAgent(competitor_name);
-    return res.json(data); // Returns valid schema mapping: { run_id, message, competitors }
-  } catch (error) {
-    console.error(`[Express Router Error - POST /run-agent]: ${error.message}`);
-    return res
-      .status(500)
-      .json({
-        error: "Could not initialize execution thread context wrapper.",
-      });
+    const { competitor_name, userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    const data = await bridge.runAgent(competitor_name,userId);
+    res.json(data);
+  } catch (e) {
+    console.error("[POST /run-agent]:", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ── GET: Dashboard Summary Analytics Cards ──────────────────────
+// ── GET Stats ─────────────────────────────────────────────────
 router.get("/stats", async (req, res) => {
   try {
-    const data = await bridge.getStats();
-    return res.json(data);
-  } catch (error) {
-    console.error(`[Express Router Error - GET /stats]: ${error.message}`);
-    return res
-      .status(500)
-      .json({ error: "Failed to compile aggregate metrics database cursor." });
+    const { userId } = req.query;
+    const data = await bridge.getStats(userId);
+    res.json(data);
+  } catch (e) {
+    console.error("[GET /stats]:", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ── GET: Real-Time Telemetry Stream Proxy Broker (SSE Pipe) ──────
+// ── SSE Logs ──────────────────────────────────────────────────
 router.get("/logs/:runId", (req, res) => {
   const { runId } = req.params;
   const PYTHON = process.env.PYTHON_AGENT_URL || "http://localhost:8000";
 
-  // Standard Server-Sent Events headers registration
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no"); // Direct stream processing verification
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
 
   const axios = require("axios");
-  const url = `${PYTHON}/logs/${runId}`;
-
-  console.log(`[Express Proxy] Tapping into Python SSE: ${url}`);
-
-  // Direct downstream connection pipe setup
   axios({
     method: "get",
-    url,
+    url: `${PYTHON}/logs/${runId}`,
     responseType: "stream",
-    timeout: 0, // Prevent gateway server timeouts for continuous pipelines
+    timeout: 0,
   })
     .then((response) => {
-      // Connect python output pipe stream directly to express connection stream response
       response.data.pipe(res);
-
-      // Cleanup buffer context if user closes front-end drawer window
       req.on("close", () => {
-        console.log(
-          `[Express Proxy] Client disconnected from session: ${runId}`,
-        );
-        if (!response.data.destroyed) {
-          response.data.destroy();
-        }
+        if (!response.data.destroyed) response.data.destroy();
       });
     })
-    .catch((err) => {
-      console.error(
-        `[SSE Streaming Proxy Failure - runId: ${runId}]: ${err.message}`,
-      );
-      res.end();
-    });
+    .catch(() => res.end());
 });
 
 module.exports = router;

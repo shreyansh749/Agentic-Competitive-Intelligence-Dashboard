@@ -10,6 +10,8 @@ import AgentStepper from "../components/AgentStepper";
 import LogsSidebar from "../components/LogsSidebar";
 import FilterBar from "../components/FilterBar";
 import { Plus, Terminal, RefreshCw } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const [selected, setSelected] = useState(null);
@@ -23,6 +25,18 @@ export default function Dashboard() {
 
   const { reports, loading, refetch } = useReports(selected);
   const { competitors, refetch: refetchComps } = useCompetitors();
+  const { user } = useAuth();
+  const userId = user?._id || user?.id;
+
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?";
+
+  const navigate = useNavigate();
 
   // Client-side filtering mechanism logic
   const filteredReports = useMemo(() => {
@@ -36,22 +50,21 @@ export default function Dashboard() {
     });
   }, [reports, search, sourceFilter]);
 
-  // ── Handlers: Single Company Trigger ──────────────────────────
-  // ── Dashboard.jsx ke dono handlers ko complete override kijiye ──
-
+  // Handlers
   const handleRunCompany = async (name) => {
     try {
       setStepperComp(name);
       setStepperOpen(true);
       console.log(`[Dashboard] Sending run request for: ${name}`);
 
-      // CORS aur dynamic mapping errors se bachne ke liye direct Axios/Fetch parsing verify karein
       const res = await fetch(
-        `http://localhost:5000/api/run-agent?competitor_name=${encodeURIComponent(name)}`,
-        { method: "POST" },
+        `http://localhost:5000/api/run-agent?competitor_name=${encodeURIComponent(name)}&userId=${userId}`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
       );
 
-      // Check karo server ne error 500 ya 404 toh nahi diya?
       if (!res.ok) {
         const errText = await res.text();
         alert(`🚨 Express Server Error (${res.status}): ${errText}`);
@@ -60,31 +73,16 @@ export default function Dashboard() {
       }
 
       const data = await res.json();
-      console.log("[Dashboard Debug] Full API Payload Received:", data);
-
-      // Python schema structure variations safe bypass checking
       const extractedRunId = data.run_id || (data.data && data.data.run_id);
 
       if (extractedRunId) {
-        console.log(`[Dashboard] Success! Captured Token: ${extractedRunId}`);
         setCurrentRunId(extractedRunId);
-        //setShowLogs(true); // Automatic sidebar reveal
       } else {
-        // Agar backend se response toh aaya par run_id gayab hai
-        alert(
-          `⚠️ Server responded successfully, but 'run_id' key is missing inside the payload object! Look at your browser console.`,
-        );
-        console.error(
-          "[Dashboard Critical] Payload content shape mismatch:",
-          data,
-        );
+        alert(`⚠️ Server responded successfully, but 'run_id' key is missing!`);
         setStepperOpen(false);
       }
     } catch (e) {
-      alert(
-        `❌ Connection Failed! Node.js server (Port 5000) block is offline or unreachable: ${e.message}`,
-      );
-      console.error("[Dashboard Single Trigger Error Exception]:", e);
+      alert(`❌ Connection Failed! Node.js server offline: ${e.message}`);
       setStepperOpen(false);
     }
   };
@@ -93,11 +91,11 @@ export default function Dashboard() {
     try {
       setStepperComp("All Selected Profiles");
       setStepperOpen(true);
-      console.log("[Dashboard] Sending global network run request...");
 
-      const res = await fetch(`http://localhost:5000/api/run-agent`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        `http://localhost:5000/api/run-agent?userId=${userId}`,
+        { method: "POST", credentials: "include" },
+      );
 
       if (!res.ok) {
         const errText = await res.text();
@@ -111,20 +109,12 @@ export default function Dashboard() {
 
       if (extractedRunId) {
         setCurrentRunId(extractedRunId);
-        //setShowLogs(true);
       } else {
-        alert(
-          `⚠️ Global trigger payload returned data, but missing dynamic token matching.`,
-        );
-        console.error(
-          "[Dashboard Critical] Global response keys broken:",
-          data,
-        );
+        alert(`⚠️ Global trigger missing dynamic token matching.`);
         setStepperOpen(false);
       }
     } catch (e) {
       alert(`❌ Connection Failed on Global Run! ${e.message}`);
-      console.error("[Dashboard Global Run Error Exception]:", e);
       setStepperOpen(false);
     }
   };
@@ -133,53 +123,82 @@ export default function Dashboard() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f9fafb",
+        width: "100%",
+        // Gradient ambient glow setup
+        background:
+          "radial-gradient(at 0% 0%, rgba(243, 244, 246, 1) 0, transparent 50%), radial-gradient(at 100% 100%, rgba(239, 246, 255, 1) 0, transparent 50%), #f8fafc",
         fontFamily: "Inter, system-ui, sans-serif",
+        overflowX: "hidden",
       }}
     >
-      {/* Navbar Structure */}
+      {/* Premium Glass Navbar Layout */}
       <div
         style={{
-          background: "#fff",
-          borderBottom: "0.5px solid #e5e7eb",
-          padding: "13px 28px",
+          background: "rgba(255, 255, 255, 0.8)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+          padding: "14px 40px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           position: "sticky",
           top: 0,
           zIndex: 100,
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.02)",
         }}
       >
-        <div>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#111" }}>
-            🔍 Competitive Intel Matrix
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>🔍</span> Competitive Intel Matrix
           </span>
-          <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 10 }}>
-            LangGraph + CRAG Hub
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: "#3b82f6",
+              background: "#eff6ff",
+              padding: "3px 8px",
+              borderRadius: "6px",
+              letterSpacing: "0.3px",
+              border: "1px solid #dbeafe",
+            }}
+          >
+            LangGraph + CRAG Engine
           </span>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {/* 🔥 FIX: Disabled condition injected dynamically */}
+        {/* Action Controls Menu Control Group */}
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button
             onClick={() => setShowLogs(true)}
-            //disabled={!currentRunId} // Jab tak runId null ya empty hai, yeh disabled rahega
             style={{
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: !currentRunId ? "#9ca3af" : "#111827", // Disabled hone par gray, active hone par dark
-              color: "#e6edf3",
+              background: !currentRunId ? "#94a3b8" : "#0f172a",
+              color: "#f8fafc",
               border: "none",
               borderRadius: 8,
-              padding: "7px 14px",
+              padding: "8px 16px",
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
-              //cursor: !currentRunId ? "not-allowed" : "pointer", // Disabled cursor style change
-              opacity: !currentRunId ? 0.6 : 1, // Visual indication for disabled state
-              transition: "all 0.2s ease-in-out",
+              opacity: !currentRunId ? 0.7 : 1,
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: currentRunId
+                ? "0 4px 12px rgba(15, 23, 42, 0.15)"
+                : "none",
             }}
             title={
               !currentRunId
@@ -188,20 +207,6 @@ export default function Dashboard() {
             }
           >
             <Terminal size={13} /> System Logs
-            {currentRunId && (
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  background: "#10b981",
-                  borderRadius: "50%",
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  boxShadow: "0 0 4px #10b981",
-                }}
-              />
-            )}
           </button>
 
           <button
@@ -210,51 +215,123 @@ export default function Dashboard() {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "#fff",
-              border: "1px solid #d1d5db",
+              background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+              color: "#fff",
+              border: "none",
               borderRadius: 8,
-              padding: "7px 14px",
+              padding: "8px 16px",
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
+              transition: "transform 0.15s ease, boxShadow 0.15s ease",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow =
+                "0 6px 16px rgba(37, 99, 235, 0.3)";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 12px rgba(37, 99, 235, 0.2)";
             }}
           >
-            <Plus size={14} /> Add Competitor
+            <Plus size={14} color="#fff" strokeWidth={2.5} /> Add Competitor
           </button>
 
           <RunAllButton onDone={refetch} onClick={handleRunAll} />
+
+          {/* User Profile Avatar Frame */}
+          <button
+            onClick={() => navigate("/profile")}
+            title={user?.name || "View Profile"}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+              color: "#fff",
+              border: "2px solid #fff",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginLeft: 4,
+              boxShadow: "0 4px 10px rgba(0, 0, 0, 0.08)",
+              transition: "transform 0.2s ease",
+            }}
+            onMouseOver={(e) =>
+              (e.currentTarget.style.transform = "scale(1.05)")
+            }
+            onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            {initials}
+          </button>
         </div>
       </div>
 
-      {/* Main Containers Grid Dashboard */}
-      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "28px 24px" }}>
-        <StatsBar />
-        <ActivityChart reports={reports} />
+      {/* Main Framework Dashboard Grid Content */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          margin: "0 auto",
+          padding: "36px 40px",
+          boxSizing: "border-box",
+        }}
+      >
+        <div style={{ marginBottom: 32 }}>
+          <StatsBar />
+        </div>
 
-        {/* Competitor Profile Chips Navigation Slider */}
-        <div style={{ marginBottom: 24 }}>
+        <div
+          style={{
+            marginBottom: 32,
+            background: "#fff",
+            borderRadius: 16,
+            padding: "24px",
+            border: "1px solid rgba(226, 232, 240, 0.8)",
+            boxShadow: "0 4px 20px -2px rgba(0, 0, 0, 0.03)",
+          }}
+        >
+          <ActivityChart reports={reports} />
+        </div>
+
+        {/* Competitor Control Chips Filter Rack */}
+        <div style={{ marginBottom: 32 }}>
           <div
             style={{
               display: "flex",
-              gap: 8,
+              gap: 10,
               flexWrap: "wrap",
-              marginBottom: 10,
+              alignItems: "center",
             }}
           >
             <button
               onClick={() => setSelected(null)}
               style={{
-                padding: "6px 16px",
+                padding: "8px 20px",
                 borderRadius: 99,
                 fontSize: 12,
-                fontWeight: 500,
+                fontWeight: 600,
                 cursor: "pointer",
-                background: selected === null ? "#1a56db" : "#f3f4f6",
-                color: selected === null ? "#fff" : "#374151",
-                border: `1px solid ${selected === null ? "#1a56db" : "#e5e7eb"}`,
+                background:
+                  selected === null
+                    ? "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)"
+                    : "#fff",
+                color: selected === null ? "#fff" : "#475569",
+                border: selected === null ? "none" : "1px solid #e2e8f0",
+                boxShadow:
+                  selected === null
+                    ? "0 4px 12px rgba(15, 23, 42, 0.15)"
+                    : "0 2px 4px rgba(0,0,0,0.02)",
+                transition: "all 0.2s ease",
               }}
             >
-              All Targets
+              🎯 All Targets
             </button>
 
             {competitors.map((c) => (
@@ -263,23 +340,31 @@ export default function Dashboard() {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
-                  background: "#f3f4f6",
+                  gap: 4,
+                  background:
+                    selected === c.name ? "rgba(37, 99, 235, 0.06)" : "#fff",
                   borderRadius: 99,
-                  paddingRight: 4,
+                  padding: "3px 4px 3px 4px",
+                  border: `1px solid ${selected === c.name ? "#bfdbfe" : "#e2e8f0"}`,
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <button
                   onClick={() => setSelected(c.name)}
                   style={{
-                    padding: "6px 14px",
+                    padding: "5px 14px",
                     borderRadius: 99,
                     fontSize: 12,
-                    fontWeight: 500,
+                    fontWeight: 600,
                     cursor: "pointer",
-                    background: selected === c.name ? "#1a56db" : "transparent",
-                    color: selected === c.name ? "#fff" : "#374151",
+                    background:
+                      selected === c.name
+                        ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)"
+                        : "transparent",
+                    color: selected === c.name ? "#fff" : "#475569",
                     border: "none",
+                    transition: "all 0.2s ease",
                   }}
                 >
                   {c.name}
@@ -293,29 +378,50 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Filters Optimization Dashboard Toolbelt */}
-        <FilterBar
-          search={search}
-          setSearch={setSearch}
-          sourceFilter={sourceFilter}
-          setSourceFilter={setSourceFilter}
-        />
+        <div style={{ marginBottom: 28 }}>
+          <FilterBar
+            search={search}
+            setSearch={setSearch}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+          />
+        </div>
 
-        {/* Dynamic Aggregations Analytics Metadata Header */}
+        {/* Table/Feed Metadata Aggregation SubHeader */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 16,
+            marginBottom: 20,
+            padding: "0 4px",
           }}
         >
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>
+          <h2
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#1e293b",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
             {selected
-              ? `${selected} Core Feed Reports`
-              : "Aggregated Intelligence Feed"}
-            <span style={{ color: "#9ca3af", fontWeight: 400, marginLeft: 8 }}>
-              ({filteredReports.length} items parsed)
+              ? `📊 ${selected} Core Feed Reports`
+              : " Aggregated Intelligence Feed"}
+            <span
+              style={{
+                color: "#3b82f6",
+                background: "#eff6ff",
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "2px 8px",
+                borderRadius: 99,
+                border: "1px solid #dbeafe",
+              }}
+            >
+              {filteredReports.length} Items
             </span>
           </h2>
           <button
@@ -323,27 +429,50 @@ export default function Dashboard() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 4,
-              background: "none",
-              border: "none",
+              gap: 6,
+              background: "#fff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 8,
+              padding: "6px 14px",
               fontSize: 12,
-              color: "#6b7280",
+              fontWeight: 600,
+              color: "#475569",
               cursor: "pointer",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+              transition: "all 0.2s ease",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "#f8fafc";
+              e.currentTarget.style.color = "#0f172a";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "#fff";
+              e.currentTarget.style.color = "#475569";
             }}
           >
-            <RefreshCw size={12} /> Sync Dashboard
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />{" "}
+            Sync Dashboard
           </button>
         </div>
 
-        {/* Core Multi-Agent Reports Feed Grid */}
-        <ReportFeed
-          reports={filteredReports}
-          loading={loading}
-          onRunCompany={handleRunCompany}
-        />
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            border: "1px solid rgba(226, 232, 240, 0.8)",
+            boxShadow: "0 4px 20px -2px rgba(0, 0, 0, 0.02)",
+            overflow: "hidden",
+          }}
+        >
+          <ReportFeed
+            reports={filteredReports}
+            loading={loading}
+            onRunCompany={handleRunCompany}
+          />
+        </div>
       </div>
 
-      {/* ── Overlay Portals Layover Layer Hooks ───────────────────────── */}
+      {/* Overlay Portals Layer Hooks */}
       {showModal && (
         <AddCompetitorModal
           onClose={() => setShowModal(false)}
@@ -363,13 +492,13 @@ export default function Dashboard() {
           refetch();
         }}
       />
-      {/* Stable Continuous Sidebar Call - Handles internal fallbacks seamlessly */}
+
       {showLogs && (
         <LogsSidebar
           open={showLogs}
           onClose={() => {
             setShowLogs(false);
-            setCurrentRunId(null); // Reset track on close context
+            setCurrentRunId(null);
             refetch();
           }}
           runId={currentRunId}
