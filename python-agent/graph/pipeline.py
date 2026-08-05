@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 # LangGraph imports
 from langgraph.graph import StateGraph, END
 
-# Unified Google GenAI SDK Client configuration
-from google import genai
+from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage
 
 # Tool Import
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -17,9 +17,11 @@ from graph.logger_store import active_agent_logs
 
 load_dotenv()
 
-# Direct Google GenAI SDK Client initialization
-client = genai.Client()
-MODEL_NAME = "gemini-2.5-flash"
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",  # best free model
+    api_key=os.getenv("GROQ_API_KEY"),
+    temperature=0
+)
 
 
 # ── Global run_id for logging ────────────────────────────────────
@@ -104,11 +106,10 @@ Rate this data quality from 0.0 to 1.0 based on relevant rules.
 Respond with ONLY a decimal number between 0.0 and 1.0. Nothing else."""
 
     try:
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt
-        )
-        score_text = response.text.strip()
+        response = llm.invoke([
+            HumanMessage(content=prompt)
+        ])
+        score_text = response.content.strip()
         score = float(score_text)
         score = max(0.0, min(1.0, score))
     except Exception as e:
@@ -176,11 +177,8 @@ New data block matches template profiles. Extract strategic vectors or shifts.
 Data: {state['clean_data'][:2500]}"""
 
     try:
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt
-        )
-        analysis_content = response.text
+        response = llm.invoke([HumanMessage(content=prompt)])
+        analysis_content = response.content
     except Exception as e:
         analysis_content = f"Error during analysis generation: {str(e)}"
         log(f"[Node: Analyzer Error] {analysis_content}", "error")
@@ -193,15 +191,37 @@ Data: {state['clean_data'][:2500]}"""
 def summarizer_node(state: AgentState) -> dict:
     log(f"[Node: Summarizer] Generating executive summary...", "info")
 
-    prompt = f"""Create a concise executive summary formatted strictly with action verbs based on:
-{state['analysis']}"""
+    prompt = f"""You are a sharp competitive intelligence analyst writing for busy startup founders.
+
+Based on this analysis of {state['competitor_name']}, write 3 to 6 bullet points.
+
+Analysis:
+{state['analysis']}
+
+STRICT RULES:
+- Minimum 3, Maximum 6 bullet points
+- Each bullet MUST feel like a breaking news headline — sharp, specific, intriguing
+- Format: • [Strong action verb] [specific what] — [why it matters to the reader]
+- Maximum 20 words per bullet
+- Plain text only — NO markdown, NO asterisks, NO **, NO bold
+- Start each bullet with •
+- Use numbers/percentages where available (e.g. "raises ₹200Cr", "cuts prices 15%")
+- End with something that makes the reader want to know MORE (hint at impact, don't fully explain)
+- If nothing changed: • No significant moves detected — market position unchanged this cycle
+
+GOOD EXAMPLE:
+- Launches dark store network in 12 cities — signals aggressive quick-commerce pivot
+- Cuts delivery fees by 30% — threatens Swiggy's price-sensitive customer base
+- Onboards 500 cloud kitchen partners — quietly building parallel revenue stream
+
+BAD EXAMPLE (do not do this):
+- Company is doing well and expanding operations in various markets globally
+
+Output ONLY the bullet points. Nothing else."""
 
     try:
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt
-        )
-        summary_content = response.text
+        response = llm.invoke([HumanMessage(content=prompt)])
+        summary_content = response.content
     except Exception as e:
         summary_content = "• No significant changes detected this cycle"
         log(f"[Node: Summarizer Error] {str(e)}", "error")

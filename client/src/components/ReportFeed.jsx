@@ -217,25 +217,31 @@ function ReportCard({ report, onRun }) {
                     <div
                       key={i}
                       style={{
-                        marginBottom: 12,
+                        marginBottom: 10,
                         display: "flex",
                         alignItems: "flex-start",
+                        gap: 8,
                       }}
                     >
-                      {line.trim().startsWith("*") ||
-                      line.trim().startsWith("-") ? (
-                        <span
-                          style={{
-                            color: "#38bdf8",
-                            marginRight: 8,
-                            fontWeight: "bold",
-                          }}
-                        >
-                          •
-                        </span>
-                      ) : null}
-                      <span style={{ flex: 1 }}>
-                        {renderFormattedText(line.replace(/^[*-\s]+/, ""))}
+                      {/* Bullet dot — hamesha dikhao */}
+                      <span
+                        style={{
+                          color: "#38bdf8",
+                          fontWeight: "bold",
+                          fontSize: 16,
+                          flexShrink: 0,
+                          marginTop: 1,
+                        }}
+                      >
+                        •
+                      </span>
+
+                      {/* Clean text — ** aur leading symbols hatao */}
+                      <span style={{ flex: 1, lineHeight: 1.6 }}>
+                        {line
+                          .replace(/\*\*/g, "") // ** hatao
+                          .replace(/^[•\*\-\s]+/, "") // leading bullet/dash hatao
+                          .trim()}
                       </span>
                     </div>
                   ))}
