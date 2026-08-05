@@ -1,1 +1,19 @@
+# Dependencies
+node_modules/
 node-server/node_modules/
+client/node_modules/
+
+# Environment files
+.env
+**/.env
+node-server/.env
+python-agent/.env
+client/.env
+
+# Python
+python-agent/venv/
+__pycache__/
+*.pyc
+
+# Build
+client/dist/
