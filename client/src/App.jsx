@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ProfilePage from "./pages/ProfilePage";
+import CompanyPage from "./pages/CompanyPage";  
 import "./App.css";
 
 function App() {
@@ -19,6 +20,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/company/:name"
+            element={
+              <ProtectedRoute>
+                <CompanyPage />
               </ProtectedRoute>
             }
           />

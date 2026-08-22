@@ -18,7 +18,7 @@ from graph.logger_store import active_agent_logs
 load_dotenv()
 
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile",  # best free model
+    model="openai/gpt-oss-20b",  # best free model
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0
 )
@@ -171,10 +171,35 @@ def analyzer_node(state: AgentState) -> dict:
     has_prev = "No previous" not in old_data
     log(f"[Node: Analyzer] Previous report: {'found' if has_prev else 'not found (first run)'}", "info")
 
-    prompt = f"""You are a competitive intelligence analyst.
-Competitor: {state['competitor_name']}
-New data block matches template profiles. Extract strategic vectors or shifts.
-Data: {state['clean_data'][:2500]}"""
+    prompt = f"""You are a competitive intelligence analyst tracking {state['competitor_name']}.
+
+    === PREVIOUS REPORT ===
+    {old_data[:1500]}
+
+    === NEW DATA COLLECTED TODAY ===
+    {state['clean_data'][:2500]}
+
+    Your task: Compare new data with previous report and identify significant changes.
+
+    OUTPUT FORMAT — follow this EXACTLY:
+
+    **[Category Name]**
+    What changed: [One clear sentence — specific, factual]
+    Impact: [Why it matters to business — max 20 words]
+
+    **[Category Name]**
+    What changed: [One clear sentence]
+    Impact: [Why it matters]
+
+    Rules:
+    - Maximum 5 categories
+    - Categories can be: Pricing, Product Launch, Partnership, Leadership, Campaign, Strategy, Acquisition
+    - Only include categories where something actually changed
+    - Use numbers where available (%, ₹, counts, timeframes)
+    - No markdown tables, no bullet sub-points, no headers with ===
+    - If nothing changed: write only "No significant changes detected this cycle"
+    - Do NOT repeat information from previous report
+    - Plain English — a non-technical business person should understand it"""
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])

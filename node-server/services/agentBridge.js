@@ -62,6 +62,21 @@ const agentBridge = {
       throw error;
     }
   },
+
+  clearReports: async (competitorName, userId) => {
+    const res = await axios.delete(
+      `${PYTHON}/reports/${encodeURIComponent(competitorName)}`,
+      { params: { user_id: userId } },
+    );
+    return res.data;
+  },
+
+  getLatestReports: async (userId) => {
+    const res = await axios.get(`${PYTHON}/reports/latest`, {
+      params: { user_id: userId },
+    });
+    return res.data;
+  },
 };
 
 module.exports = agentBridge;

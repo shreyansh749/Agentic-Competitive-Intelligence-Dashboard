@@ -19,20 +19,161 @@ const SourceIcon = ({ source }) => {
 };
 
 // **Helper Function:** Yeh function string mein se `**text**` ko detect karke use actual HTML bold tags <strong> mein convert karega bina markdown layout ko tode.
-const renderFormattedText = (text) => {
-  if (!text) return "";
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong key={index} style={{ color: "#38bdf8", fontWeight: 700 }}>
-          {part.slice(2, -2)}
-        </strong>
-      );
+function renderAnalysis(text) {
+  if (!text) return null;
+
+  // "No significant changes" case
+  if (text.includes("No significant changes")) {
+    return (
+      <div
+        style={{
+          padding: "16px 20px",
+          background: "#ffffff",
+          border: "1px dashed #cbd5e1",
+          borderRadius: 10,
+          fontSize: 13,
+          color: "#64748b",
+          fontStyle: "italic",
+          textAlign: "center",
+          fontFamily:
+            "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        }}
+      >
+        No significant changes detected this cycle
+      </div>
+    );
+  }
+
+  // Parse **Category** blocks
+  const blocks = text.split(/\*\*(.+?)\*\*/).filter((s) => s.trim());
+
+  const parsed = [];
+  for (let i = 0; i < blocks.length; i += 2) {
+    const category = blocks[i]?.trim();
+    const content = blocks[i + 1]?.trim();
+    if (category && content) {
+      parsed.push({ category, content });
     }
-    return part;
-  });
-};
+  }
+
+  if (parsed.length === 0) {
+    return (
+      <div
+        style={{
+          fontSize: 13,
+          color: "#334155",
+          lineHeight: 1.7,
+          background: "#ffffff",
+          padding: "16px",
+          borderRadius: 10,
+          border: "1px solid #e2e8f0",
+          fontFamily:
+            "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        }}
+      >
+        {text}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        fontFamily:
+          "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}
+    >
+      {parsed.map((block, i) => {
+        const whatMatch = block.content.match(
+          /What changed:\s*(.+?)(?=Impact:|$)/s,
+        );
+        const impactMatch = block.content.match(/Impact:\s*(.+?)$/s);
+
+        // Fallback to full content if "What changed:" prefix isn't explicitly in string
+        const what =
+          whatMatch?.[1]?.trim() ||
+          block.content.replace(/Impact:\s*(.+?)$/s, "").trim();
+        const impact = impactMatch?.[1]?.trim();
+
+        return (
+          <div
+            key={i}
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              padding: "14px 18px",
+              boxShadow:
+                "0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02)",
+              transition: "border-color 0.15s ease",
+            }}
+          >
+            {/* Category badge */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                background: "#eff6ff",
+                color: "#2563eb",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                padding: "3px 10px",
+                borderRadius: 6,
+                marginBottom: 10,
+                border: "1px solid #dbeafe",
+                textTransform: "uppercase",
+              }}
+            >
+              {block.category}
+            </div>
+
+            {/* What changed */}
+            {what && (
+              <div
+                style={{
+                  fontSize: 13.5,
+                  color: "#1e293b",
+                  lineHeight: 1.6,
+                  fontWeight: 400,
+                  marginBottom: impact ? 10 : 0,
+                }}
+              >
+                {what}
+              </div>
+            )}
+
+            {/* Impact Box */}
+            {impact && (
+              <div
+                style={{
+                  fontSize: 12.5,
+                  color: "#475569",
+                  lineHeight: 1.55,
+                  background: "#f8fafc",
+                  border: "1px solid #f1f5f9",
+                  borderRadius: 6,
+                  padding: "8px 12px",
+                  marginTop: 6,
+                }}
+              >
+                <span
+                  style={{ fontWeight: 600, color: "#0f172a", marginRight: 4 }}
+                >
+                  Impact:
+                </span>
+                {impact}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function ReportCard({ report, onRun }) {
   const [open, setOpen] = useState(false);
@@ -251,22 +392,16 @@ function ReportCard({ report, onRun }) {
             {activeTab === "analysis" && (
               <div
                 style={{
-                  fontSize: 12,
-                  color: "#e2e8f0",
-                  lineHeight: "1.8",
-                  background: "#0f172a", // Premium Obsidian terminal vibe
-                  borderRadius: 10,
-                  padding: "18px 20px",
-                  fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                  whiteSpace: "pre-wrap",
-                  maxHeight: 350,
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  padding: "16px",
+                  maxHeight: 380,
                   overflowY: "auto",
-                  border: "1px solid #1e293b",
-                  boxShadow: "inset 0 2px 8px rgba(0,0,0,0.2)",
+                  boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.03)",
                 }}
               >
-                {renderFormattedText(report.analysis) ||
-                  "No detailed analytical intelligence logged."}
+                {renderAnalysis(report.analysis)}
               </div>
             )}
           </div>

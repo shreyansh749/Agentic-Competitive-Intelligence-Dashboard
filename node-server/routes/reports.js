@@ -69,6 +69,33 @@ router.get("/stats", async (req, res) => {
   }
 });
 
+// ── DELETE — company ke saare reports hatao ───────────────────
+router.delete('/reports/:competitorName', async (req, res) => {
+  try {
+    const { userId }        = req.query
+    const { competitorName } = req.params
+    if (!userId) return res.status(400).json({ error: 'userId required' })
+
+    const data = await bridge.clearReports(decodeURIComponent(competitorName), userId)
+    res.json(data)
+  } catch(e) {
+    console.error('[DELETE /reports]:', e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// ── GET latest — har company ka ek latest report ──────────────
+router.get('/reports/latest', async (req, res) => {
+  try {
+    const { userId } = req.query
+    const data = await bridge.getLatestReports(userId)
+    res.json(data)
+  } catch(e) {
+    console.error('[GET /reports/latest]:', e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
 // ── SSE Logs ──────────────────────────────────────────────────
 router.get("/logs/:runId", (req, res) => {
   const { runId } = req.params;

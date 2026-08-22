@@ -46,6 +46,20 @@ def upsert_competitor(data: dict):
 
 # ── Async functions (FastAPI use karega) ───────────────────────
 
+async def create_indexes():
+    await async_db.reports.create_index([
+        ("user_id", 1),
+        ("timestamp", -1)
+    ])
+    await async_db.reports.create_index([
+        ("competitor", 1),
+        ("user_id", 1)
+    ])
+    await async_db.competitors.create_index([
+        ("user_id", 1)
+    ])
+    print("[MongoDB] Indexes created")
+
 async def async_save_report(data: dict):
     """Ek competitor ka report save karo async mein"""
     # Dono keys ka jhanjhat khatam karne ke liye hum dono set kar dete hain

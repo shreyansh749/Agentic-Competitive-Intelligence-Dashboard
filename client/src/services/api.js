@@ -11,6 +11,14 @@ export const reportsAPI = {
   getAll: (competitor, limit, userId) =>
     api.get("/reports", { params: { competitor, limit, userId } }),
 
+  clearCompanyReports: (competitorName, userId) =>
+    api.delete(`/reports/${encodeURIComponent(competitorName)}`, {
+      params: { userId }
+    }),
+
+  getLatestReports: (userId) =>
+      api.get('/reports/latest', { params: { userId } }),
+
   getCompetitors: (userId) => api.get("/competitors", { params: { userId } }),
 
   addCompetitor: (data, userId) =>

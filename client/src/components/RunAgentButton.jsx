@@ -56,19 +56,26 @@ export function RunCompanyButton({ competitorName, onDone, onClick }) {
 }
 
 // Global run all button
-export function RunAllButton({ onDone }) {
+export function RunAllButton({ onDone, onClick }) {
   const [running, setRunning] = useState(false);
 
   const handle = async () => {
     try {
       setRunning(true);
-      await reportsAPI.runAgent(null);
-      setTimeout(() => {
-        setRunning(false);
-        onDone?.();
-      }, 60000);
-    } catch {
-      setRunning(false);
+      // onClick prop hai toh woh call karo (Dashboard ka handleRunAll)
+      if (onClick) {
+        await onClick(); // ← handleRunAll() chalega
+      } else {
+        await reportsAPI.runAgent(null);
+        setTimeout(() => {
+          setRunning(false);
+          onDone?.();
+        }, 60000);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRunning(false); // ← onClick complete hone pe immediately reset
     }
   };
 
