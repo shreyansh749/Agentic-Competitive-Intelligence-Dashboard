@@ -9,10 +9,14 @@ import AddCompetitorModal from "../components/AddCompetitorModal";
 import AgentStepper from "../components/AgentStepper";
 import LogsSidebar from "../components/LogsSidebar";
 import FilterBar from "../components/FilterBar";
-import { Plus, Terminal, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Terminal,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import QualityBadge from "../components/QualityBadge";
 import MinimalProgressView from "../components/MinimalProgressView";
 import { reportsAPI } from "../services/api";
 
@@ -99,7 +103,6 @@ export default function Dashboard() {
       setIsRunAll(true);
       setStepperOpen(true);
       setStepperComp(null);
-        //console.log("[Debug] userId:", userId);
       const res = await fetch(
         `http://localhost:5000/api/run-agent?userId=${userId}`,
         { method: "POST", credentials: "include" },
@@ -130,7 +133,6 @@ export default function Dashboard() {
   const handleClearAllReports = async () => {
     try {
       setClearingAll(true);
-      // Saare competitors ke reports delete karo
       await Promise.all(
         competitors.map((c) => reportsAPI.clearCompanyReports(c.name, userId)),
       );
@@ -148,7 +150,6 @@ export default function Dashboard() {
       style={{
         minHeight: "100vh",
         width: "100%",
-        // Gradient ambient glow setup
         background:
           "radial-gradient(at 0% 0%, rgba(243, 244, 246, 1) 0, transparent 50%), radial-gradient(at 100% 100%, rgba(239, 246, 255, 1) 0, transparent 50%), #f8fafc",
         fontFamily: "Inter, system-ui, sans-serif",
@@ -186,27 +187,13 @@ export default function Dashboard() {
           >
             <span>🔍</span> Competitive Intelligent Agent
           </span>
-          {/* <span
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              color: "#3b82f6",
-              background: "#eff6ff",
-              padding: "3px 8px",
-              borderRadius: "6px",
-              letterSpacing: "0.3px",
-              border: "1px solid #dbeafe",
-            }}
-          >
-
-          </span> */}
         </div>
 
         {/* Action Controls Menu Control Group */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button
             onClick={() => {
-              if (!activeRunId) return; // ← activeRunId nahi hai toh kuch mat karo
+              if (!activeRunId) return; 
               setShowLogs(true);
             }}
             style={{
@@ -220,13 +207,13 @@ export default function Dashboard() {
               padding: "8px 16px",
               fontSize: 12,
               fontWeight: 600,
-              cursor: !activeRunId ? "not-allowed" : "pointer", // ← cursor bhi change
+              cursor: !activeRunId ? "not-allowed" : "pointer", 
               opacity: !activeRunId ? 0.7 : 1,
               transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
               boxShadow: activeRunId
                 ? "0 4px 12px rgba(15, 23, 42, 0.15)"
                 : "none",
-              pointerEvents: "auto", // ← hamesha events allow karo (disabled nahi karna)
+              pointerEvents: "auto", 
             }}
             title={
               !activeRunId ? "Run an agent first" : "Open terminal console"
@@ -394,10 +381,6 @@ export default function Dashboard() {
                 >
                   {c.name}
                 </button>
-                {/* <RunCompanyButton
-                  competitorName={c.name}
-                  onClick={() => handleRunCompany(c.name)}
-                /> */}
               </div>
             ))}
           </div>
@@ -410,7 +393,6 @@ export default function Dashboard() {
             setSourceFilter={setSourceFilter}
           />
         </div>
-        {/* Table/Feed Metadata Aggregation SubHeader */}
         {/* Reports header section mein */}
         <div
           style={{
@@ -517,15 +499,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* <AgentStepper
-        running={stepperOpen}
-        competitor={stepperComp}
-        runId={currentRunId}
-        onClose={() => {
-          setStepperOpen(false);
-          refetch();
-        }}
-      /> */}
       {stepperOpen && isRunAll && (
         <MinimalProgressView
           competitors={competitors.map((c) => c.name)}
@@ -641,517 +614,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-// this code have better animatin and ui with color given by gemini (aisa hi ui karana hai claude se)
-
-// import { useState, useMemo } from "react";
-// import { useReports } from "../hooks/useReports";
-// import { useCompetitors } from "../hooks/useCompetitors";
-// import StatsBar from "../components/StatsBar";
-// import ReportFeed from "../components/ReportFeed";
-// import ActivityChart from "../components/ActivityChart";
-// import { RunAllButton, RunCompanyButton } from "../components/RunAgentButton";
-// import AddCompetitorModal from "../components/AddCompetitorModal";
-// import AgentStepper from "../components/AgentStepper";
-// import LogsSidebar from "../components/LogsSidebar";
-// import FilterBar from "../components/FilterBar";
-// import { Plus, Terminal, RefreshCw, Zap, Activity } from "lucide-react";
-// import { useAuth } from "../context/AuthContext";
-// import { useNavigate } from "react-router-dom";
-// import QualityBadge from "../components/QualityBadge";
-// import MinimalProgressView from "../components/MinimalProgressView";
-
-// export default function Dashboard() {
-//   const [selected, setSelected] = useState(null);
-//   const [showModal, setShowModal] = useState(false);
-//   const [showLogs, setShowLogs] = useState(false);
-//   const [stepperOpen, setStepperOpen] = useState(false);
-//   const [stepperComp, setStepperComp] = useState(null);
-//   const [search, setSearch] = useState("");
-//   const [sourceFilter, setSourceFilter] = useState("all");
-//   const [activeRunId, setActiveRunId] = useState(null);
-//   const [isRunAll, setIsRunAll] = useState(false);
-
-//   const { reports, loading, refetch } = useReports(selected);
-//   const { competitors, refetch: refetchComps } = useCompetitors();
-//   const { user } = useAuth();
-//   const userId = user?._id || user?.id;
-
-//   const initials =
-//     user?.name
-//       ?.split(" ")
-//       .map((n) => n[0])
-//       .join("")
-//       .toUpperCase()
-//       .slice(0, 2) || "S";
-
-//   const navigate = useNavigate();
-
-//   // Client-side filtering mechanism logic
-//   const filteredReports = useMemo(() => {
-//     return reports.filter((r) => {
-//       const matchSearch =
-//         !search ||
-//         r.competitor?.toLowerCase().includes(search.toLowerCase()) ||
-//         r.summary?.toLowerCase().includes(search.toLowerCase());
-//       const matchSource = sourceFilter === "all" || r.source === sourceFilter;
-//       return matchSearch && matchSource;
-//     });
-//   }, [reports, search, sourceFilter]);
-
-//   // Handlers
-//   const handleRunCompany = async (name) => {
-//     try {
-//       setIsRunAll(false);
-//       setStepperComp(name);
-//       setStepperOpen(true);
-//       console.log(`[Dashboard] Sending run request for: ${name}`);
-
-//       const res = await fetch(
-//         `http://localhost:5000/api/run-agent?competitor_name=${encodeURIComponent(name)}&userId=${userId}`,
-//         {
-//           method: "POST",
-//           credentials: "include",
-//         },
-//       );
-
-//       if (!res.ok) {
-//         const errText = await res.text();
-//         alert(`🚨 Express Server Error (${res.status}): ${errText}`);
-//         setStepperOpen(false);
-//         return;
-//       }
-
-//       const data = await res.json();
-//       const extractedRunId = data.run_id || (data.data && data.data.run_id);
-
-//       if (extractedRunId) {
-//         setActiveRunId(extractedRunId);
-//       } else {
-//         alert(`⚠️ Server responded successfully, but 'run_id' key is missing!`);
-//         setStepperOpen(false);
-//       }
-//     } catch (e) {
-//       alert(`❌ Connection Failed! Node.js server offline: ${e.message}`);
-//       setStepperOpen(false);
-//     }
-//   };
-
-//   const handleRunAll = async () => {
-//     try {
-//       setIsRunAll(true);
-//       setStepperOpen(true);
-//       setStepperComp(null);
-//       const res = await fetch(
-//         `http://localhost:5000/api/run-agent?userId=${userId}`,
-//         { method: "POST", credentials: "include" },
-//       );
-
-//       if (!res.ok) {
-//         const errText = await res.text();
-//         alert(`🚨 Express Global Runner Error (${res.status}): ${errText}`);
-//         setStepperOpen(false);
-//         return;
-//       }
-
-//       const data = await res.json();
-//       const extractedRunId = data.run_id || (data.data && data.data.run_id);
-
-//       if (extractedRunId) {
-//         setActiveRunId(extractedRunId);
-//       } else {
-//         alert(`⚠️ Global trigger missing dynamic token matching.`);
-//         setStepperOpen(false);
-//       }
-//     } catch (e) {
-//       alert(`❌ Connection Failed on Global Run! ${e.message}`);
-//       setStepperOpen(false);
-//     }
-//   };
-
-//   return (
-//     <div
-//       style={{
-//         minHeight: "100vh",
-//         width: "100%",
-//         backgroundColor: "#f8f9fe",
-//         fontFamily:
-//           "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-//         color: "#1e293b",
-//         overflowX: "hidden",
-//       }}
-//     >
-//       {/* Top Header Navbar */}
-//       <div
-//         style={{
-//           background: "#ffffff",
-//           borderBottom: "1px solid #edf2f7",
-//           padding: "12px 36px",
-//           display: "flex",
-//           alignItems: "center",
-//           justifyContent: "space-between",
-//           position: "sticky",
-//           top: 0,
-//           zIndex: 100,
-//           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
-//         }}
-//       >
-//         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-//           <div
-//             style={{
-//               width: 34,
-//               height: 34,
-//               backgroundColor: "#8b5cf6",
-//               borderRadius: 8,
-//               display: "flex",
-//               alignItems: "center",
-//               justifyContent: "center",
-//               color: "#ffffff",
-//               boxShadow: "0 2px 8px rgba(139, 92, 246, 0.35)",
-//             }}
-//           >
-//             <Zap size={18} fill="#ffffff" strokeWidth={0} />
-//           </div>
-//           <span
-//             style={{
-//               fontSize: 16,
-//               fontWeight: 800,
-//               color: "#0f172a",
-//               letterSpacing: "-0.3px",
-//             }}
-//           >
-//             Competitive Intelligence
-//           </span>
-//         </div>
-
-//         {/* Action Controls */}
-//         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-//           <button
-//             onClick={() => setShowLogs(true)}
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: 6,
-//               background: "#ffffff",
-//               color: "#64748b",
-//               border: "1px solid #e2e8f0",
-//               borderRadius: 8,
-//               padding: "7px 14px",
-//               fontSize: 12,
-//               fontWeight: 600,
-//               cursor: "pointer",
-//               transition: "all 0.15s ease",
-//             }}
-//           >
-//             <span style={{ fontSize: 13, color: "#94a3b8" }}>&gt;_</span> System
-//             Logs
-//           </button>
-
-//           <button
-//             onClick={() => setShowModal(true)}
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: 6,
-//               background: "#6366f1",
-//               color: "#ffffff",
-//               border: "none",
-//               borderRadius: 8,
-//               padding: "7px 16px",
-//               fontSize: 12,
-//               fontWeight: 600,
-//               cursor: "pointer",
-//               boxShadow: "0 2px 6px rgba(99, 102, 241, 0.3)",
-//               transition: "opacity 0.15s ease",
-//             }}
-//           >
-//             <Plus size={14} color="#fff" strokeWidth={2.5} /> Add Target
-//           </button>
-
-//           <button
-//             onClick={handleRunAll}
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: 6,
-//               background: "#2563eb",
-//               color: "#ffffff",
-//               border: "none",
-//               borderRadius: 8,
-//               padding: "7px 16px",
-//               fontSize: 12,
-//               fontWeight: 600,
-//               cursor: "pointer",
-//               boxShadow: "0 2px 6px rgba(37, 99, 235, 0.3)",
-//               transition: "opacity 0.15s ease",
-//             }}
-//           >
-//             <RefreshCw size={13} strokeWidth={2.5} /> Run All
-//           </button>
-
-//           {/* User Profile Avatar */}
-//           <button
-//             onClick={() => navigate("/profile")}
-//             title={user?.name || "View Profile"}
-//             style={{
-//               width: 32,
-//               height: 32,
-//               borderRadius: "50%",
-//               backgroundColor: "#ec4899",
-//               color: "#ffffff",
-//               border: "none",
-//               cursor: "pointer",
-//               fontSize: 12,
-//               fontWeight: 700,
-//               display: "flex",
-//               alignItems: "center",
-//               justifyContent: "center",
-//               marginLeft: 4,
-//               boxShadow: "0 2px 6px rgba(236, 72, 153, 0.25)",
-//             }}
-//           >
-//             {initials}
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* Main Container */}
-//       <div
-//         style={{
-//           width: "100%",
-//           maxWidth: "1320px",
-//           margin: "0 auto",
-//           padding: "24px 32px",
-//           boxSizing: "border-box",
-//         }}
-//       >
-//         {/* Metric Cards */}
-//         <div style={{ marginBottom: 20 }}>
-//           <StatsBar />
-//         </div>
-
-//         {/* Activity Chart Container */}
-//         <div
-//           style={{
-//             marginBottom: 20,
-//             background: "#ffffff",
-//             borderRadius: 14,
-//             padding: "20px 24px",
-//             border: "1px solid #f1f5f9",
-//             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
-//           }}
-//         >
-//           <ActivityChart reports={reports} />
-//         </div>
-
-//         {/* Competitor Chips Bar */}
-//         <div style={{ marginBottom: 20 }}>
-//           <div
-//             style={{
-//               display: "flex",
-//               gap: 8,
-//               flexWrap: "wrap",
-//               alignItems: "center",
-//             }}
-//           >
-//             <button
-//               onClick={() => setSelected(null)}
-//               style={{
-//                 display: "inline-flex",
-//                 alignItems: "center",
-//                 gap: 6,
-//                 padding: "6px 16px",
-//                 borderRadius: 20,
-//                 fontSize: 12,
-//                 fontWeight: 600,
-//                 cursor: "pointer",
-//                 background: selected === null ? "#0f172a" : "#ffffff",
-//                 color: selected === null ? "#ffffff" : "#475569",
-//                 border:
-//                   selected === null ? "1px solid #0f172a" : "1px solid #e2e8f0",
-//                 boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
-//                 transition: "all 0.15s ease",
-//               }}
-//             >
-//               <span>🎯</span> All Targets
-//             </button>
-
-//             {competitors.map((c) => {
-//               const isSelected = selected === c.name;
-//               return (
-//                 <div
-//                   key={c.name}
-//                   style={{
-//                     display: "inline-flex",
-//                     alignItems: "center",
-//                     gap: 2,
-//                     background: isSelected ? "#0f172a" : "#ffffff",
-//                     borderRadius: 20,
-//                     padding: "2px 4px",
-//                     border: isSelected
-//                       ? "1px solid #0f172a"
-//                       : "1px solid #e2e8f0",
-//                     boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
-//                     transition: "all 0.15s ease",
-//                   }}
-//                 >
-//                   <button
-//                     onClick={() =>
-//                       navigate(`/company/${encodeURIComponent(c.name)}`)
-//                     }
-//                     style={{
-//                       padding: "4px 12px",
-//                       borderRadius: 20,
-//                       fontSize: 12,
-//                       fontWeight: 600,
-//                       cursor: "pointer",
-//                       background: "transparent",
-//                       color: isSelected ? "#ffffff" : "#475569",
-//                       border: "none",
-//                       transition: "color 0.15s ease",
-//                     }}
-//                   >
-//                     {c.name}
-//                   </button>
-//                 </div>
-//               );
-//             })}
-//           </div>
-//         </div>
-
-//         {/* Filter Input */}
-//         <div style={{ marginBottom: 20 }}>
-//           <FilterBar
-//             search={search}
-//             setSearch={setSearch}
-//             sourceFilter={sourceFilter}
-//             setSourceFilter={setSourceFilter}
-//           />
-//         </div>
-
-//         {/* Feed Header */}
-//         <div
-//           style={{
-//             display: "flex",
-//             justifyContent: "space-between",
-//             alignItems: "center",
-//             marginBottom: 12,
-//             padding: "0 2px",
-//           }}
-//         >
-//           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-//             <Activity size={15} color="#6366f1" />
-//             <h2
-//               style={{
-//                 fontSize: 13,
-//                 fontWeight: 700,
-//                 color: "#1e293b",
-//                 margin: 0,
-//               }}
-//             >
-//               {selected
-//                 ? `${selected} Core Feed Reports`
-//                 : "Aggregated Intelligence Feed"}
-//             </h2>
-//             <span
-//               style={{
-//                 color: "#6366f1",
-//                 background: "#eef2ff",
-//                 fontSize: 11,
-//                 fontWeight: 600,
-//                 padding: "2px 8px",
-//                 borderRadius: 12,
-//               }}
-//             >
-//               {filteredReports.length} reports
-//             </span>
-//           </div>
-
-//           <button
-//             onClick={refetch}
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: 6,
-//               background: "transparent",
-//               border: "none",
-//               fontSize: 12,
-//               fontWeight: 600,
-//               color: "#64748b",
-//               cursor: "pointer",
-//             }}
-//           >
-//             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />{" "}
-//             Sync Feed
-//           </button>
-//         </div>
-
-//         {/* Feed Card Section */}
-//         <div
-//           style={{
-//             background: "#ffffff",
-//             borderRadius: 14,
-//             border: "1px solid #f1f5f9",
-//             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
-//             overflow: "hidden",
-//           }}
-//         >
-//           <ReportFeed
-//             reports={filteredReports}
-//             loading={loading}
-//             onRunCompany={handleRunCompany}
-//           />
-//         </div>
-//       </div>
-
-//       {/* Modals & Overlays */}
-//       {showModal && (
-//         <AddCompetitorModal
-//           onClose={() => setShowModal(false)}
-//           onAdded={() => {
-//             refetchComps();
-//             setShowModal(false);
-//           }}
-//         />
-//       )}
-
-//       {stepperOpen && isRunAll && (
-//         <MinimalProgressView
-//           competitors={competitors.map((c) => c.name)}
-//           runId={activeRunId}
-//           onClose={() => {
-//             setStepperOpen(false);
-//             setIsRunAll(false);
-//           }}
-//           onDone={() => {
-//             refetch();
-//           }}
-//         />
-//       )}
-
-//       {stepperOpen && !isRunAll && (
-//         <AgentStepper
-//           running={stepperOpen}
-//           competitor={stepperComp}
-//           runId={activeRunId}
-//           onClose={() => {
-//             setStepperOpen(false);
-//             refetch();
-//           }}
-//         />
-//       )}
-
-//       {showLogs && (
-//         <LogsSidebar
-//           open={showLogs}
-//           onClose={() => {
-//             setShowLogs(false);
-//             setActiveRunId(null);
-//             refetch();
-//           }}
-//           runId={activeRunId}
-//         />
-//       )}
-//     </div>
-//   );
-// }

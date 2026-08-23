@@ -81,6 +81,38 @@ def get_cache_stats():
         "size":     cache.size
     }
 
+#____ Remove competitor_____________________________________________ 
+@app.delete("/competitors/{competitor_name}")
+async def remove_competitor(competitor_name: str, user_id: str = None):
+    try:
+        from db.mongo_client import async_db
+
+        # Competitor delete
+        await async_db.competitors.delete_one({
+            "name":    competitor_name,
+            "user_id": user_id
+        })
+
+        # Saare reports bhi delete
+        result = await async_db.reports.delete_many({
+            "competitor": competitor_name,
+            "user_id":    user_id
+        })
+
+        # Cache invalidate
+        cache.delete_pattern(f"competitors:{user_id}")
+        cache.delete_pattern(f"reports:{user_id}")
+        cache.delete_pattern(f"stats:{user_id}")
+
+        print(f"[Delete] Removed {competitor_name} + {result.deleted_count} reports")
+
+        return {
+            "message": f"Removed {competitor_name} and {result.deleted_count} reports"
+        }
+    except Exception as e:
+        print(f"[Delete Error]: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── GET Reports ───────────────────────────────────────────────────
 @app.get("/reports")
 async def get_reports(competitor: str = None, limit: int = 50, user_id: str = None):

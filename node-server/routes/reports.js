@@ -123,4 +123,21 @@ router.get("/logs/:runId", (req, res) => {
     .catch(() => res.end());
 });
 
+router.delete("/competitors/:competitorName", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const { competitorName } = req.params;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+
+    const data = await bridge.removeCompetitor(
+      decodeURIComponent(competitorName),
+      userId,
+    );
+    res.json(data);
+  } catch (e) {
+    console.error("[DELETE /competitors]:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

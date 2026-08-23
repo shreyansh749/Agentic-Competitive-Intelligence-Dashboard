@@ -48,7 +48,7 @@ export default function SignupPage() {
   const getInputStyle = (fieldName) => ({
     width: "100%",
     padding: "11px 14px 11px 40px",
-    background: "#fff", // Fixed canvas overlay dynamic error mapping Screenshot (462).png
+    background: "#fff", 
     border:
       focusedField === fieldName ? "1px solid #2563eb" : "1px solid #e2e8f0",
     borderRadius: 8,

@@ -77,6 +77,14 @@ const agentBridge = {
     });
     return res.data;
   },
+
+  removeCompetitor: async (competitorName, userId) => {
+    const res = await axios.delete(
+      `${PYTHON}/competitors/${encodeURIComponent(competitorName)}`,
+      { params: { user_id: userId } },
+    );
+    return res.data;
+  },
 };
 
 module.exports = agentBridge;

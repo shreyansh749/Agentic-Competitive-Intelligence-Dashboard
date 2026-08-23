@@ -5,7 +5,14 @@ import { reportsAPI } from "../services/api";
 import ReportFeed from "../components/ReportFeed";
 import AgentStepper from "../components/AgentStepper";
 import LogsSidebar from "../components/LogsSidebar";
-import { ArrowLeft, Play, Trash2, Loader, Terminal } from "lucide-react";
+import {
+  ArrowLeft,
+  Play,
+  Trash2,
+  Loader,
+  Terminal,
+  UserMinus,
+} from "lucide-react";
 
 export default function CompanyPage() {
   const { name } = useParams();
@@ -22,6 +29,8 @@ export default function CompanyPage() {
   const [currentRunId, setCurrentRunId] = useState(null);
   const [showLogs, setShowLogs] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const fetchReports = async () => {
     if (!userId) return;
@@ -69,6 +78,18 @@ export default function CompanyPage() {
       console.error(e);
     } finally {
       setClearing(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    try {
+      setRemoving(true);
+      await reportsAPI.removeCompetitor(companyName, userId);
+      navigate("/"); 
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -195,6 +216,26 @@ export default function CompanyPage() {
           >
             <Trash2 size={14} /> Clear All
           </button>
+
+          {/* Remove Competitor */}
+          <button
+            onClick={() => setShowRemoveModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#f7e6e6",
+              color: "#ff0404",
+              border: "1px solid #f7b9b9",
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            <UserMinus size={14} /> Remove Competitor
+          </button>
         </div>
       </div>
 
@@ -317,6 +358,80 @@ export default function CompanyPage() {
           }}
           runId={currentRunId}
         />
+      )}
+
+      {showRemoveModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: "28px 32px",
+              width: 400,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#111",
+                marginBottom: 8,
+              }}
+            >
+              Remove {companyName}?
+            </h3>
+            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 24 }}>
+              This will permanently remove <strong>{companyName}</strong> from
+              your tracking list and delete all{" "}
+              <strong>{reports.length} reports</strong>. This cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowRemoveModal(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  background: "#cececf",
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRemove}
+                disabled={removing}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  background: "#dc2626",
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  color: "#fff",
+                }}
+              >
+                {removing ? "Removing..." : "Yes, remove"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -13,11 +13,11 @@ export const reportsAPI = {
 
   clearCompanyReports: (competitorName, userId) =>
     api.delete(`/reports/${encodeURIComponent(competitorName)}`, {
-      params: { userId }
+      params: { userId },
     }),
 
   getLatestReports: (userId) =>
-      api.get('/reports/latest', { params: { userId } }),
+    api.get("/reports/latest", { params: { userId } }),
 
   getCompetitors: (userId) => api.get("/competitors", { params: { userId } }),
 
@@ -32,4 +32,9 @@ export const reportsAPI = {
     }),
 
   getStats: (userId) => api.get("/stats", { params: { userId } }),
+
+  removeCompetitor: (competitorName, userId) =>
+    api.delete(`/competitors/${encodeURIComponent(competitorName)}`, {
+      params: { userId },
+    }),
 };

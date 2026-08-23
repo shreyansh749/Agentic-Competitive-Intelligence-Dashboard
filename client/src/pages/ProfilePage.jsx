@@ -239,7 +239,7 @@ export default function ProfilePage() {
                     style={{
                       width: "100%",
                       padding: "11px 14px 11px 38px",
-                      background: "#fff", // Fixed dark theme canvas bug from image_28aa03.jpg
+                      background: "#fff", 
                       border: isFocused
                         ? "1px solid #2563eb"
                         : "1px solid #e2e8f0",
