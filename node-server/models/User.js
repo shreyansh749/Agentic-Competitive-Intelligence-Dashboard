@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// ── Password hash ─────────────────────────────────────────────
+// Password hash 
 userSchema.pre("save", async function (next) {
   try {
     if (!this.isModified("password")) return;
@@ -18,7 +18,7 @@ userSchema.pre("save", async function (next) {
     this.password = await bcrypt.hash(this.password, salt);
     
   } catch (err) {
-    return next(err); // ← error next ko pass karo
+    return next(err); 
   }
 });
 
@@ -27,7 +27,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// ── Password ko response se hatao ────────────────────────────
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

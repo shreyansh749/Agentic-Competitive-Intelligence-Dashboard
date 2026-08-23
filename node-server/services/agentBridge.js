@@ -29,7 +29,6 @@ const agentBridge = {
 
   addCompetitor: async (data) => {
     try {
-      console.log("[AgentBridge] Adding competitor:", data);
       const res = await axios.post(`${PYTHON}/competitors`, data);
       return res.data;
     } catch (error) {

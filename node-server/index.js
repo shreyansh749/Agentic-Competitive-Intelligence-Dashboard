@@ -22,12 +22,12 @@ mongoose
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
-    credentials: true, // ← cookies ke liye zaroori
+    credentials: true, 
   }),
 );
 app.use(morgan("dev"));
 app.use(express.json());
-app.use(cookieParser()); // ← cookies parse karne ke liye
+app.use(cookieParser()); 
 
 app.use("/api", reportsRouter);
 app.use("/api/auth", authRouter);

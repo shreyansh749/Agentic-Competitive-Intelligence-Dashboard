@@ -30,12 +30,9 @@ router.get("/competitors", async (req, res) => {
 // ── POST Competitor ───────────────────────────────────────────
 router.post("/competitors", async (req, res) => {
   try {
-    const { userId } = req.query;
-    //console.log("[Route] userId from query:", userId); // debug
-    console.log("[Route] body:", req.body);  
+    const { userId } = req.query;  
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    console.log("[Route] data ", { ...req.body, user_id:userId }); // debug
     const data = await bridge.addCompetitor({ ...req.body, user_id:userId });
     res.json(data);
   } catch (e) {
@@ -69,7 +66,7 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-// ── DELETE — company ke saare reports hatao ───────────────────
+// ── DELETE — remove reports for a specific competitor ───────────────────
 router.delete('/reports/:competitorName', async (req, res) => {
   try {
     const { userId }        = req.query
@@ -84,7 +81,7 @@ router.delete('/reports/:competitorName', async (req, res) => {
   }
 })
 
-// ── GET latest — har company ka ek latest report ──────────────
+// ── GET latest — latest reports for each competitor ──────────────
 router.get('/reports/latest', async (req, res) => {
   try {
     const { userId } = req.query

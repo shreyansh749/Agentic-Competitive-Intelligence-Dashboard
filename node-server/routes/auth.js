@@ -8,8 +8,8 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES || "7d";
 
 // Cookie options
 const cookieOptions = {
-  httpOnly: true, // JS se access nahi hoga — XSS protection
-  secure: process.env.NODE_ENV === "production", // HTTPS only in prod
+  httpOnly: true, 
+  secure: process.env.NODE_ENV === "production", 
   sameSite: "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
@@ -33,7 +33,7 @@ module.exports = async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    req.user = user; // ← har route mein req.user available hoga
+    req.user = user; 
     next();
   } catch (e) {
     res.status(401).json({ error: "Invalid or expired token" });
@@ -44,34 +44,25 @@ module.exports = async function authMiddleware(req, res, next) {
 router.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    // console.log("back 1");
-
-    // Validation
     if (!name || !email || !password) {
       return res
         .status(400)
         .json({ error: "Name, email and password required" });
     }
-    // console.log("back 2");
     if (password.length < 6) {
       return res
         .status(400)
         .json({ error: "Password must be at least 6 characters" });
     }
-    // console.log("back 3");
-    // Check existing user
+
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(409).json({ error: "Email already registered" });
     }
-    // console.log("back 4"); 
-    // console.log("Creating user with:", { name, email, password }); // Debug log
-    // Create user
     
   
     const user = await User.create({ name, email, password });
     const token = signToken(user._id);
-  // console.log("back 5"); 
     res.cookie("token", token, cookieOptions);
     res.status(201).json({
       message: "Account created successfully",
@@ -92,7 +83,6 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Email and password required" });
     }
 
-    // Find user — password field explicitly select karo
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
