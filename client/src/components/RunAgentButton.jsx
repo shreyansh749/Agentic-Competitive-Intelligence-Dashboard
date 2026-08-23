@@ -2,16 +2,14 @@ import { useState } from "react";
 import { reportsAPI } from "../services/api";
 import { Play, Loader, RefreshCw } from "lucide-react";
 
-// Per-company small button
 export function RunCompanyButton({ competitorName, onDone, onClick }) {
   const [running, setRunning] = useState(false);
 
   const handle = async () => {
     try {
       setRunning(true);
-      // onClick prop hai toh woh call karo (Dashboard ka handleRunCompany)
       if (onClick) {
-        await onClick(); // ← handleRunCompany(name) chalega
+        await onClick(); 
       } else {
         await reportsAPI.runAgent(competitorName);
         onDone?.();
@@ -55,16 +53,14 @@ export function RunCompanyButton({ competitorName, onDone, onClick }) {
   );
 }
 
-// Global run all button
 export function RunAllButton({ onDone, onClick }) {
   const [running, setRunning] = useState(false);
 
   const handle = async () => {
     try {
       setRunning(true);
-      // onClick prop hai toh woh call karo (Dashboard ka handleRunAll)
       if (onClick) {
-        await onClick(); // ← handleRunAll() chalega
+        await onClick(); 
       } else {
         await reportsAPI.runAgent(null);
         setTimeout(() => {
@@ -75,7 +71,7 @@ export function RunAllButton({ onDone, onClick }) {
     } catch (e) {
       console.error(e);
     } finally {
-      setRunning(false); // ← onClick complete hone pe immediately reset
+      setRunning(false); 
     }
   };
 
@@ -110,5 +106,4 @@ export function RunAllButton({ onDone, onClick }) {
   );
 }
 
-// Default export for backward compat
 export default RunAllButton;

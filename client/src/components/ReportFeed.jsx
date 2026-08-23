@@ -18,7 +18,6 @@ const SourceIcon = ({ source }) => {
   return <Rss size={12} color="#f59e0b" />;
 };
 
-// **Helper Function:** Yeh function string mein se `**text**` ko detect karke use actual HTML bold tags <strong> mein convert karega bina markdown layout ko tode.
 function renderAnalysis(text) {
   if (!text || text.includes("No significant changes")) {
     return (
@@ -41,7 +40,6 @@ function renderAnalysis(text) {
     );
   }
 
-  // Parse **Category** blocks
   const blocks = text.split(/\*\*(.+?)\*\*/).filter((s) => s.trim());
 
   const parsed = [];
@@ -89,7 +87,6 @@ function renderAnalysis(text) {
         );
         const impactMatch = block.content.match(/Impact:\s*(.+?)$/s);
 
-        // Fallback to full content if "What changed:" prefix isn't explicitly in string
         const what =
           whatMatch?.[1]?.trim() ||
           block.content.replace(/Impact:\s*(.+?)$/s, "").trim();
@@ -128,7 +125,6 @@ function renderAnalysis(text) {
               {block.category}
             </div>
 
-            {/* What changed */}
             {what && (
               <div
                 style={{
@@ -143,7 +139,6 @@ function renderAnalysis(text) {
               </div>
             )}
 
-            {/* Impact Box */}
             {impact && (
               <div
                 style={{
@@ -195,7 +190,6 @@ function ReportCard({ report, onRun }) {
         transform: isHovered && !open ? "translateY(-1px)" : "none",
       }}
     >
-      {/* Card Header */}
       <div
         onClick={() => setOpen((o) => !o)}
         style={{
@@ -282,10 +276,8 @@ function ReportCard({ report, onRun }) {
         </div>
       </div>
 
-      {/* Expanded content */}
       {open && (
         <div style={{ borderTop: "1px solid #f1f5f9", background: "#fff" }}>
-          {/* Tabs Navigation Layout */}
           <div
             style={{
               display: "flex",
@@ -331,7 +323,6 @@ function ReportCard({ report, onRun }) {
             ))}
           </div>
 
-          {/* Tab content wrapper */}
           <div style={{ padding: "24px" }}>
             {activeTab === "summary" && (
               <div
@@ -339,10 +330,10 @@ function ReportCard({ report, onRun }) {
                   fontSize: 13,
                   color: "#e2e8f0",
                   lineHeight: "1.9",
-                  background: "#0f172a", // 🔥 Same Obsidian Dark Terminal Background as right tab
+                  background: "#0f172a", 
                   borderRadius: 10,
                   padding: "20px",
-                  fontFamily: "Inter, system-ui, sans-serif", // Clean reading font instead of raw mono
+                  fontFamily: "Inter, system-ui, sans-serif", 
                   whiteSpace: "pre-wrap",
                   border: "1px solid #1e293b",
                   boxShadow: "inset 0 2px 8px rgba(0,0,0,0.2)",
@@ -361,7 +352,6 @@ function ReportCard({ report, onRun }) {
                         gap: 8,
                       }}
                     >
-                      {/* Bullet dot — hamesha dikhao */}
                       <span
                         style={{
                           color: "#38bdf8",
@@ -374,11 +364,10 @@ function ReportCard({ report, onRun }) {
                         •
                       </span>
 
-                      {/* Clean text — ** aur leading symbols hatao */}
                       <span style={{ flex: 1, lineHeight: 1.6 }}>
                         {line
-                          .replace(/\*\*/g, "") // ** hatao
-                          .replace(/^[•\*\-\s]+/, "") // leading bullet/dash hatao
+                          .replace(/\*\*/g, "") 
+                          .replace(/^[•\*\-\s]+/, "") 
                           .trim()}
                       </span>
                     </div>

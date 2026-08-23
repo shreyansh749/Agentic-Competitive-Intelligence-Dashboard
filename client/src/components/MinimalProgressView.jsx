@@ -12,82 +12,6 @@ export default function MinimalProgressView({
   );
   const [done, setDone] = useState(false);
 
-  // useEffect(() => {
-  //   if (!runId) return;
-
-  //   // Reset on new run
-  //   setStatus(Object.fromEntries(competitors.map((c) => [c, "queued"])));
-  //   setDone(false);
-
-  //   const es = new EventSource(`http://localhost:5000/api/logs/${runId}`);
-
-  //   es.onmessage = (event) => {
-  //     try {
-  //       const entry = JSON.parse(event.data);
-  //       const msg = entry.message || "";
-
-  //       console.log("[SSE]", msg); // ← temporarily add karo
-  //       // ── Done signal — pehle check karo ───────────────────
-  //       if (
-  //         msg.includes("All done —") ||
-  //         msg.startsWith("__STATUS__") ||
-  //         entry.level === "done"
-  //       ) {
-  //         // Saare remaining competitors force complete karo
-  //         setStatus((prev) => {
-  //           const updated = { ...prev };
-  //           Object.keys(updated).forEach((name) => {
-  //             if (updated[name] === "running" || updated[name] === "queued") {
-  //               updated[name] = "completed";
-  //             }
-  //           });
-  //           return updated;
-  //         });
-  //         setDone(true);
-  //         es.close();
-  //         return;
-  //       }
-
-  //       // ── Per-competitor status track ───────────────────────
-  //       competitors.forEach((name) => {
-  //         // Running
-  //         if (
-  //           msg.includes(`Dispatching: ${name}`) ||
-  //           msg.includes(`Starting run for ${name}`)
-  //         ) {
-  //           setStatus((prev) => ({ ...prev, [name]: "running" }));
-  //         }
-
-  //         // Completed — saare possible patterns
-  //         if (
-  //           msg.includes(`Completed: ${name}`) ||
-  //           msg.includes(`Complete for ${name}`) ||
-  //           msg.includes(`completed for ${name}`)
-  //         ) {
-  //           setStatus((prev) => ({ ...prev, [name]: "completed" }));
-  //         }
-
-  //         // Failed
-  //         if (
-  //           msg.includes(`ERROR for ${name}`) ||
-  //           msg.includes(`failed for ${name}`) ||
-  //           msg.includes(`Failed for ${name}`)
-  //         ) {
-  //           setStatus((prev) => ({ ...prev, [name]: "failed" }));
-  //         }
-  //       });
-  //     } catch (e) {
-  //       console.error("[MinimalProgressView] Parse error:", e);
-  //     }
-  //   };
-
-  //   es.onerror = () => {
-  //     console.error("[MinimalProgressView] SSE error");
-  //     es.close();
-  //   };
-
-  //   return () => es.close();
-  // }, [runId]);
 
   useEffect(() => {
     if (!runId) return;
@@ -102,9 +26,6 @@ export default function MinimalProgressView({
         const entry = JSON.parse(event.data);
         const msg = entry.message || "";
 
-        console.log("[SSE]", msg); // ← temporarily add karo
-
-        // Done signal
         if (
           msg.includes("All done —") ||
           msg.includes("__STATUS__") ||
@@ -122,7 +43,6 @@ export default function MinimalProgressView({
           return;
         }
 
-        // Per competitor tracking
         competitors.forEach((name) => {
           if (
             msg.includes(`Dispatching: ${name}`) ||
@@ -148,7 +68,7 @@ export default function MinimalProgressView({
 
     es.onerror = () => es.close();
     return () => es.close();
-  }, [runId]); // ← SIRF runId dependency — competitors nahi
+  }, [runId]); 
   
   const total = competitors.length;
   const completed = Object.values(status).filter(

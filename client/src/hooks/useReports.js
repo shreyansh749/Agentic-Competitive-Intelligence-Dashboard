@@ -6,14 +6,14 @@ export function useReports(competitor = null) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { user } = useAuth(); // 🔥 Logged-in user nikala
-  const userId = user?.id || user?._id; // 🔥 UserId extract ki
+  const { user } = useAuth(); 
+  const userId = user?.id || user?._id; 
 
   const fetch = useCallback(async () => {
     if (!userId) return;
     try {
       setLoading(true);
-      const res = await reportsAPI.getAll(competitor, 100,userId); // 🔥 UserId ko API call me bheja
+      const res = await reportsAPI.getAll(competitor, 100,userId); 
       setReports(res.data.reports);
     } catch (e) {
       setError(e.message);

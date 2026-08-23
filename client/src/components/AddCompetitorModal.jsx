@@ -36,7 +36,7 @@ export default function AddCompetitorModal({ onClose, onAdded }) {
     }
   };
 
-  // 🔥 CHANGED: Improved input structural fields layout styling
+  
   const getInputStyle = (fieldName) => ({
     width: "100%",
     padding: "10px 14px",
@@ -72,7 +72,6 @@ export default function AddCompetitorModal({ onClose, onAdded }) {
       style={{
         position: "fixed",
         inset: 0,
-        // 🔥 CHANGED: Applied premium glass background layer
         background: "rgba(15, 23, 42, 0.3)",
         backdropFilter: "blur(6px)",
         display: "flex",
@@ -94,7 +93,6 @@ export default function AddCompetitorModal({ onClose, onAdded }) {
           boxSizing: "border-box",
         }}
       >
-        {/* 🔥 CHANGED: Clean responsive absolute close switch anchor element */}
         <button
           onClick={onClose}
           aria-label="Close modal"
@@ -148,7 +146,6 @@ export default function AddCompetitorModal({ onClose, onAdded }) {
           </p>
         </div>
 
-        {/* Inputs Fields Structure Grid Layout */}
         <label style={labelStyle}>
           <Building2 size={13} color="#64748b" /> Company Name{" "}
           <span style={{ color: "#ef4444", marginLeft: "2px" }}>*</span>

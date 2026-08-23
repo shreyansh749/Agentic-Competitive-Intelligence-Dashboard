@@ -5,8 +5,8 @@ import { useAuth } from "../context/AuthContext";
 export function useCompetitors() {
   const [competitors, setCompetitors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth(); // 🔥 Logged-in user nikala
-  const userId = user?.id || user?._id; // 🔥 UserId extract ki
+  const { user } = useAuth(); 
+  const userId = user?.id || user?._id; 
 
   const fetch = useCallback(async () => {
     if (!userId) return;

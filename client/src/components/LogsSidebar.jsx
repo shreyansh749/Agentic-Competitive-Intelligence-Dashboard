@@ -3,19 +3,16 @@ import { X, Terminal, Trash2 } from "lucide-react";
 
 export default function LogsSidebar({ open, onClose, runId }) {
   const [logs, setLogs] = useState([]);
-  const [status, setStatus] = useState("idle"); // idle | running | done | error
+  const [status, setStatus] = useState("idle"); 
   const bottomRef = useRef(null);
   const esRef = useRef(null);
 
   useEffect(() => {
-    // Active connections garbage collection cycle clear karo
     if (esRef.current) {
       esRef.current.close();
       esRef.current = null;
     }
-    console.log(1);
     if (!open) return
-    console.log(2);
     if (!runId) {
       setLogs([
         {
@@ -27,24 +24,18 @@ export default function LogsSidebar({ open, onClose, runId }) {
       setStatus("idle");
       return;
     }
-    console.log(3);
-    // Reset layout attributes initially
+
+    
     setLogs([]);
     setStatus("running");
-    console.log(4);
-    // Connect securely directly through Node Express Pipeline Proxy (Port 5000)
     const url = `http://localhost:5000/api/logs/${runId}`;
-    console.log("[LogsSidebar] Connecting EventSource to:", url);
-    console.log(5);
     const es = new EventSource(url);
     esRef.current = es;
 
     es.onmessage = (event) => {
       try {
-        // Safe check for missing or null event data signals
         if (!event.data) return;
 
-        // Defensive text pattern matching before running structural object conversions
         if (
           typeof event.data === "string" &&
           event.data.startsWith("__STATUS__")
@@ -55,10 +46,8 @@ export default function LogsSidebar({ open, onClose, runId }) {
           return;
         }
 
-        // Run object construction parameters safely inside sandbox framework
         const entry = JSON.parse(event.data);
 
-        // Backup parsing support for alternative key-value string variants
         if (entry.message?.startsWith("__STATUS__")) {
           const s = entry.message.replace("__STATUS__", "").trim();
           setStatus(s);
@@ -77,7 +66,6 @@ export default function LogsSidebar({ open, onClose, runId }) {
           },
         ]);
       } catch (parseError) {
-        // Safe alternative string handler layout to prevent frontend loop drops
         const rawText = event.data.toString();
 
         if (rawText.includes("__STATUS__")) {
@@ -108,7 +96,6 @@ export default function LogsSidebar({ open, onClose, runId }) {
     };
   }, [open, runId]);
 
-  // Handle smooth auto-scroll parameters efficiently
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
@@ -153,7 +140,7 @@ export default function LogsSidebar({ open, onClose, runId }) {
           position: "fixed",
           top: 0,
           right: 0,
-          width: 520, // Slightly expanded space parameters for standard text alignment layouts
+          width: 520, 
           height: "100vh",
           background: "#0d1117",
           zIndex: 3001,

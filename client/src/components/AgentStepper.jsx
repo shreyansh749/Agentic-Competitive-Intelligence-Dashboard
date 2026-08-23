@@ -55,7 +55,6 @@ export default function AgentStepper({ running, competitor, onClose, runId }) {
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
-    // Reset on new run
     setCompletedSteps(new Set());
     setActiveStep(null);
     setCragScore(null);
@@ -65,7 +64,6 @@ export default function AgentStepper({ running, competitor, onClose, runId }) {
 
     if (!running || !runId) return;
 
-    // SSE se real logs subscribe karo
     const url = `http://localhost:5000/api/logs/${runId}`;
     const es = new EventSource(url);
 
@@ -74,7 +72,6 @@ export default function AgentStepper({ running, competitor, onClose, runId }) {
         const entry = JSON.parse(event.data);
         const msg = entry.message || "";
 
-        // Done signal
         if (msg.startsWith("__STATUS__")) {
           const s = msg.replace("__STATUS__", "").trim();
           if (s === "done") setDone(true);
@@ -84,11 +81,9 @@ export default function AgentStepper({ running, competitor, onClose, runId }) {
 
         setLogs((prev) => [...prev, msg]);
 
-        // ── Step tracking — keyword match ──────────────────────
         STEPS.forEach((step, i) => {
           if (msg.includes(step.keyword)) {
             setActiveStep(i);
-            // Pichle saare steps complete mark karo
             setCompletedSteps((prev) => {
               const next = new Set(prev);
               for (let j = 0; j < i; j++) next.add(j);
@@ -97,20 +92,16 @@ export default function AgentStepper({ running, competitor, onClose, runId }) {
           }
         });
 
-        // Store complete hone pe sab done
         if (msg.includes("[Node: Store] Report saved")) {
           setCompletedSteps(new Set([0, 1, 2, 3, 4, 5, 6]));
           setActiveStep(null);
         }
 
-        // ── CRAG real score extract karo ──────────────────────
-        // Log: "[Node: CRAG Grader] Score: 0.72 — ⚠️ Ambiguous"
         if (msg.includes("[Node: CRAG Grader] Score:")) {
           const match = msg.match(/Score:\s*([\d.]+)/);
           if (match) setCragScore(parseFloat(match[1]).toFixed(2));
         }
 
-        // ── Real source track karo ────────────────────────────
         if (msg.includes("[CRAG Router] Direct to analyzer"))
           setSource("scraped");
         if (msg.includes("[CRAG Router] Full web search"))
@@ -131,7 +122,6 @@ export default function AgentStepper({ running, competitor, onClose, runId }) {
 
   if (!running && !done) return null;
 
-  // Source badge config
   const sourceBadge = {
     scraped: {
       label: "✅ Direct Scraped",

@@ -5,17 +5,15 @@ const AuthContext = createContext(null);
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-// Axios instance with credentials
 const authApi = axios.create({
   baseURL: BASE,
-  withCredentials: true, // ← cookies send/receive ke liye
+  withCredentials: true, 
 });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // initial check
+  const [loading, setLoading] = useState(true); 
 
-  // App load hone pe cookie se user check karo
   useEffect(() => {
     authApi
       .get("/auth/me")
