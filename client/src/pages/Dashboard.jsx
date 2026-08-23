@@ -9,11 +9,12 @@ import AddCompetitorModal from "../components/AddCompetitorModal";
 import AgentStepper from "../components/AgentStepper";
 import LogsSidebar from "../components/LogsSidebar";
 import FilterBar from "../components/FilterBar";
-import { Plus, Terminal, RefreshCw } from "lucide-react";
+import { Plus, Terminal, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import QualityBadge from "../components/QualityBadge";
 import MinimalProgressView from "../components/MinimalProgressView";
+import { reportsAPI } from "../services/api";
 
 export default function Dashboard() {
   const [selected, setSelected] = useState(null);
@@ -25,6 +26,8 @@ export default function Dashboard() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [activeRunId, setActiveRunId] = useState(null);
   const [isRunAll, setIsRunAll] = useState(false);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
 
   const { reports, loading, refetch } = useReports(selected);
   const { competitors, refetch: refetchComps } = useCompetitors();
@@ -124,6 +127,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleClearAllReports = async () => {
+    try {
+      setClearingAll(true);
+      // Saare competitors ke reports delete karo
+      await Promise.all(
+        competitors.map((c) => reportsAPI.clearCompanyReports(c.name, userId)),
+      );
+      setShowClearAllModal(false);
+      refetch();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setClearingAll(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -139,17 +158,17 @@ export default function Dashboard() {
       {/* Premium Glass Navbar Layout */}
       <div
         style={{
-          background: "rgba(255, 255, 255, 0.8)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
-          padding: "14px 40px",
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(16px)",
+          borderBottom: "1px solid rgba(99,102,241,0.1)",
+          padding: "12px 32px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           position: "sticky",
           top: 0,
           zIndex: 100,
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.02)",
+          boxShadow: "0 1px 20px rgba(99,102,241,0.06)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -186,7 +205,10 @@ export default function Dashboard() {
         {/* Action Controls Menu Control Group */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button
-            onClick={() => setShowLogs(true)}
+            onClick={() => {
+              if (!activeRunId) return; // ← activeRunId nahi hai toh kuch mat karo
+              setShowLogs(true);
+            }}
             style={{
               display: "flex",
               alignItems: "center",
@@ -198,17 +220,16 @@ export default function Dashboard() {
               padding: "8px 16px",
               fontSize: 12,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: !activeRunId ? "not-allowed" : "pointer", // ← cursor bhi change
               opacity: !activeRunId ? 0.7 : 1,
               transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
               boxShadow: activeRunId
                 ? "0 4px 12px rgba(15, 23, 42, 0.15)"
                 : "none",
+              pointerEvents: "auto", // ← hamesha events allow karo (disabled nahi karna)
             }}
             title={
-              !activeRunId
-                ? "Trigger an agent run first to view real-time logs"
-                : "Open terminal console"
+              !activeRunId ? "Run an agent first" : "Open terminal console"
             }
           >
             <Terminal size={13} /> System Logs
@@ -291,7 +312,6 @@ export default function Dashboard() {
         <div style={{ marginBottom: 32 }}>
           <StatsBar />
         </div>
-
         <div
           style={{
             marginBottom: 32,
@@ -304,7 +324,6 @@ export default function Dashboard() {
         >
           <ActivityChart reports={reports} />
         </div>
-
         {/* Competitor Control Chips Filter Rack */}
         <div style={{ marginBottom: 32 }}>
           <div
@@ -383,7 +402,6 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
         <div style={{ marginBottom: 28 }}>
           <FilterBar
             search={search}
@@ -392,8 +410,8 @@ export default function Dashboard() {
             setSourceFilter={setSourceFilter}
           />
         </div>
-
         {/* Table/Feed Metadata Aggregation SubHeader */}
+        {/* Reports header section mein */}
         <div
           style={{
             display: "flex",
@@ -413,9 +431,7 @@ export default function Dashboard() {
               gap: 8,
             }}
           >
-            {selected
-              ? `📊 ${selected} Core Feed Reports`
-              : " Aggregated Intelligence Feed"}
+            Aggregated Intelligence Feed
             <span
               style={{
                 color: "#3b82f6",
@@ -430,37 +446,49 @@ export default function Dashboard() {
               {filteredReports.length} Items
             </span>
           </h2>
-          <button
-            onClick={refetch}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "#fff",
-              border: "1px solid #e2e8f0",
-              borderRadius: 8,
-              padding: "6px 14px",
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#475569",
-              cursor: "pointer",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-              transition: "all 0.2s ease",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = "#f8fafc";
-              e.currentTarget.style.color = "#0f172a";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = "#fff";
-              e.currentTarget.style.color = "#475569";
-            }}
-          >
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />{" "}
-            Sync Dashboard
-          </button>
-        </div>
 
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {/* Clear All Reports button */}
+            <button
+              onClick={() => setShowClearAllModal(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#fef2f2",
+                color: "#dc2626",
+                border: "1px solid #fecaca",
+                borderRadius: 8,
+                padding: "6px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              <Trash2 size={12} /> Clear All Reports
+            </button>
+
+            {/* Sync Dashboard */}
+            <button
+              onClick={refetch}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: "6px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#475569",
+                cursor: "pointer",
+              }}
+            >
+              <RefreshCw size={12} /> Sync Dashboard
+            </button>
+          </div>
+        </div>
         <div
           style={{
             background: "#fff",
@@ -531,24 +559,88 @@ export default function Dashboard() {
           onClose={() => {
             setShowLogs(false);
             setActiveRunId(null);
-            refetch();
           }}
           runId={activeRunId}
         />
       )}
+
+      {showClearAllModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: "28px 32px",
+              width: 380,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#111",
+                marginBottom: 8,
+              }}
+            >
+              Clear all reports?
+            </h3>
+            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 24 }}>
+              This will permanently delete ALL {filteredReports.length} reports
+              across all competitors. This cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowClearAllModal(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  background: "#f3f4f6",
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  color: "#374151",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearAllReports}
+                disabled={clearingAll}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  background: "#dc2626",
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  color: "#fff",
+                }}
+              >
+                {clearingAll ? "Clearing..." : "Yes, delete all"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
 
 // this code have better animatin and ui with color given by gemini (aisa hi ui karana hai claude se)
 
@@ -558,7 +650,7 @@ export default function Dashboard() {
 // import StatsBar from "../components/StatsBar";
 // import ReportFeed from "../components/ReportFeed";
 // import ActivityChart from "../components/ActivityChart";
-// import { RunAllButton } from "../components/RunAgentButton";
+// import { RunAllButton, RunCompanyButton } from "../components/RunAgentButton";
 // import AddCompetitorModal from "../components/AddCompetitorModal";
 // import AgentStepper from "../components/AgentStepper";
 // import LogsSidebar from "../components/LogsSidebar";
@@ -566,6 +658,7 @@ export default function Dashboard() {
 // import { Plus, Terminal, RefreshCw, Zap, Activity } from "lucide-react";
 // import { useAuth } from "../context/AuthContext";
 // import { useNavigate } from "react-router-dom";
+// import QualityBadge from "../components/QualityBadge";
 // import MinimalProgressView from "../components/MinimalProgressView";
 
 // export default function Dashboard() {
@@ -576,7 +669,7 @@ export default function Dashboard() {
 //   const [stepperComp, setStepperComp] = useState(null);
 //   const [search, setSearch] = useState("");
 //   const [sourceFilter, setSourceFilter] = useState("all");
-//   const [currentRunId, setCurrentRunId] = useState(null);
+//   const [activeRunId, setActiveRunId] = useState(null);
 //   const [isRunAll, setIsRunAll] = useState(false);
 
 //   const { reports, loading, refetch } = useReports(selected);
@@ -590,10 +683,11 @@ export default function Dashboard() {
 //       .map((n) => n[0])
 //       .join("")
 //       .toUpperCase()
-//       .slice(0, 2) || "U";
+//       .slice(0, 2) || "S";
 
 //   const navigate = useNavigate();
 
+//   // Client-side filtering mechanism logic
 //   const filteredReports = useMemo(() => {
 //     return reports.filter((r) => {
 //       const matchSearch =
@@ -605,15 +699,20 @@ export default function Dashboard() {
 //     });
 //   }, [reports, search, sourceFilter]);
 
+//   // Handlers
 //   const handleRunCompany = async (name) => {
 //     try {
 //       setIsRunAll(false);
 //       setStepperComp(name);
 //       setStepperOpen(true);
+//       console.log(`[Dashboard] Sending run request for: ${name}`);
 
 //       const res = await fetch(
 //         `http://localhost:5000/api/run-agent?competitor_name=${encodeURIComponent(name)}&userId=${userId}`,
-//         { method: "POST", credentials: "include" },
+//         {
+//           method: "POST",
+//           credentials: "include",
+//         },
 //       );
 
 //       if (!res.ok) {
@@ -627,7 +726,7 @@ export default function Dashboard() {
 //       const extractedRunId = data.run_id || (data.data && data.data.run_id);
 
 //       if (extractedRunId) {
-//         setCurrentRunId(extractedRunId);
+//         setActiveRunId(extractedRunId);
 //       } else {
 //         alert(`⚠️ Server responded successfully, but 'run_id' key is missing!`);
 //         setStepperOpen(false);
@@ -643,7 +742,6 @@ export default function Dashboard() {
 //       setIsRunAll(true);
 //       setStepperOpen(true);
 //       setStepperComp(null);
-
 //       const res = await fetch(
 //         `http://localhost:5000/api/run-agent?userId=${userId}`,
 //         { method: "POST", credentials: "include" },
@@ -660,7 +758,7 @@ export default function Dashboard() {
 //       const extractedRunId = data.run_id || (data.data && data.data.run_id);
 
 //       if (extractedRunId) {
-//         setCurrentRunId(extractedRunId);
+//         setActiveRunId(extractedRunId);
 //       } else {
 //         alert(`⚠️ Global trigger missing dynamic token matching.`);
 //         setStepperOpen(false);
@@ -676,47 +774,26 @@ export default function Dashboard() {
 //       style={{
 //         minHeight: "100vh",
 //         width: "100%",
-//         background: `
-//           radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-//           radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.06) 0px, transparent 50%),
-//           #f8fafc
-//         `,
+//         backgroundColor: "#f8f9fe",
 //         fontFamily:
-//           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-//         color: "#0f172a",
-//         margin: 0,
-//         padding: 0,
-//         boxSizing: "border-box",
+//           "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+//         color: "#1e293b",
+//         overflowX: "hidden",
 //       }}
 //     >
-//       <style>{`
-//         .btn-hover-lift:hover {
-//           transform: translateY(-1.5px);
-//           box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.3) !important;
-//         }
-//         .chip-interactive:hover {
-//           transform: translateY(-1px);
-//           border-color: #818cf8 !important;
-//           color: #4f46e5 !important;
-//         }
-//       `}</style>
-
-//       {/* Edge-to-Edge Sticky Navbar */}
-//       <header
+//       {/* Top Header Navbar */}
+//       <div
 //         style={{
-//           width: "100%",
-//           boxSizing: "border-box",
-//           background: "rgba(255, 255, 255, 0.85)",
-//           backdropFilter: "blur(12px)",
-//           WebkitBackdropFilter: "blur(12px)",
-//           borderBottom: "1px solid #e2e8f0",
-//           padding: "12px 32px",
+//           background: "#ffffff",
+//           borderBottom: "1px solid #edf2f7",
+//           padding: "12px 36px",
 //           display: "flex",
 //           alignItems: "center",
 //           justifyContent: "space-between",
 //           position: "sticky",
 //           top: 0,
-//           zIndex: 50,
+//           zIndex: 100,
+//           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
 //         }}
 //       >
 //         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -724,30 +801,30 @@ export default function Dashboard() {
 //             style={{
 //               width: 34,
 //               height: 34,
-//               borderRadius: 9,
-//               background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
+//               backgroundColor: "#8b5cf6",
+//               borderRadius: 8,
 //               display: "flex",
 //               alignItems: "center",
 //               justifyContent: "center",
-//               boxShadow: "0 4px 12px rgba(99, 102, 241, 0.25)",
+//               color: "#ffffff",
+//               boxShadow: "0 2px 8px rgba(139, 92, 246, 0.35)",
 //             }}
 //           >
-//             <Zap size={17} color="#fff" strokeWidth={2.5} />
+//             <Zap size={18} fill="#ffffff" strokeWidth={0} />
 //           </div>
-//           <h1
+//           <span
 //             style={{
-//               fontSize: 15,
+//               fontSize: 16,
 //               fontWeight: 800,
-//               letterSpacing: "-0.01em",
 //               color: "#0f172a",
-//               margin: 0,
+//               letterSpacing: "-0.3px",
 //             }}
 //           >
 //             Competitive Intelligence
-//           </h1>
+//           </span>
 //         </div>
 
-//         {/* Action Buttons */}
+//         {/* Action Controls */}
 //         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
 //           <button
 //             onClick={() => setShowLogs(true)}
@@ -756,8 +833,8 @@ export default function Dashboard() {
 //               alignItems: "center",
 //               gap: 6,
 //               background: "#ffffff",
-//               color: !currentRunId ? "#64748b" : "#4f46e5",
-//               border: `1px solid ${!currentRunId ? "#e2e8f0" : "#c7d2fe"}`,
+//               color: "#64748b",
+//               border: "1px solid #e2e8f0",
 //               borderRadius: 8,
 //               padding: "7px 14px",
 //               fontSize: 12,
@@ -766,92 +843,109 @@ export default function Dashboard() {
 //               transition: "all 0.15s ease",
 //             }}
 //           >
-//             <Terminal size={13} color={!currentRunId ? "#64748b" : "#6366f1"} />{" "}
-//             System Logs
+//             <span style={{ fontSize: 13, color: "#94a3b8" }}>&gt;_</span> System
+//             Logs
 //           </button>
 
 //           <button
 //             onClick={() => setShowModal(true)}
-//             className="btn-hover-lift"
 //             style={{
 //               display: "flex",
 //               alignItems: "center",
 //               gap: 6,
-//               background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
-//               color: "#fff",
+//               background: "#6366f1",
+//               color: "#ffffff",
 //               border: "none",
 //               borderRadius: 8,
 //               padding: "7px 16px",
 //               fontSize: 12,
 //               fontWeight: 600,
 //               cursor: "pointer",
-//               boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
-//               transition: "all 0.15s ease",
+//               boxShadow: "0 2px 6px rgba(99, 102, 241, 0.3)",
+//               transition: "opacity 0.15s ease",
 //             }}
 //           >
-//             <Plus size={14} strokeWidth={2.5} /> Add Target
+//             <Plus size={14} color="#fff" strokeWidth={2.5} /> Add Target
 //           </button>
 
-//           <RunAllButton onDone={refetch} onClick={handleRunAll} />
+//           <button
+//             onClick={handleRunAll}
+//             style={{
+//               display: "flex",
+//               alignItems: "center",
+//               gap: 6,
+//               background: "#2563eb",
+//               color: "#ffffff",
+//               border: "none",
+//               borderRadius: 8,
+//               padding: "7px 16px",
+//               fontSize: 12,
+//               fontWeight: 600,
+//               cursor: "pointer",
+//               boxShadow: "0 2px 6px rgba(37, 99, 235, 0.3)",
+//               transition: "opacity 0.15s ease",
+//             }}
+//           >
+//             <RefreshCw size={13} strokeWidth={2.5} /> Run All
+//           </button>
 
+//           {/* User Profile Avatar */}
 //           <button
 //             onClick={() => navigate("/profile")}
-//             title={user?.name || "Profile"}
+//             title={user?.name || "View Profile"}
 //             style={{
-//               width: 34,
-//               height: 34,
+//               width: 32,
+//               height: 32,
 //               borderRadius: "50%",
-//               background: "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
-//               color: "#fff",
-//               border: "2px solid #ffffff",
+//               backgroundColor: "#ec4899",
+//               color: "#ffffff",
+//               border: "none",
 //               cursor: "pointer",
 //               fontSize: 12,
 //               fontWeight: 700,
 //               display: "flex",
 //               alignItems: "center",
 //               justifyContent: "center",
-//               boxShadow: "0 2px 8px rgba(236, 72, 153, 0.2)",
-//               transition: "transform 0.15s ease",
+//               marginLeft: 4,
+//               boxShadow: "0 2px 6px rgba(236, 72, 153, 0.25)",
 //             }}
 //           >
 //             {initials}
 //           </button>
 //         </div>
-//       </header>
+//       </div>
 
-//       {/* Main Content (Balanced Maximum Width & Padding) */}
-//       <main
+//       {/* Main Container */}
+//       <div
 //         style={{
 //           width: "100%",
-//           maxWidth: "1440px",
+//           maxWidth: "1320px",
 //           margin: "0 auto",
-//           padding: "28px 32px 64px",
+//           padding: "24px 32px",
 //           boxSizing: "border-box",
 //         }}
 //       >
-//         {/* Top 4 KPI Metrics */}
-//         <section style={{ marginBottom: 24, width: "100%" }}>
+//         {/* Metric Cards */}
+//         <div style={{ marginBottom: 20 }}>
 //           <StatsBar />
-//         </section>
+//         </div>
 
 //         {/* Activity Chart Container */}
-//         <section
+//         <div
 //           style={{
-//             marginBottom: 24,
-//             width: "100%",
-//             boxSizing: "border-box",
+//             marginBottom: 20,
 //             background: "#ffffff",
-//             borderRadius: 12,
+//             borderRadius: 14,
 //             padding: "20px 24px",
-//             border: "1px solid #e2e8f0",
-//             boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+//             border: "1px solid #f1f5f9",
+//             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
 //           }}
 //         >
 //           <ActivityChart reports={reports} />
-//         </section>
+//         </div>
 
-//         {/* Filter Chips Bar */}
-//         <section style={{ marginBottom: 20, width: "100%" }}>
+//         {/* Competitor Chips Bar */}
+//         <div style={{ marginBottom: 20 }}>
 //           <div
 //             style={{
 //               display: "flex",
@@ -862,10 +956,12 @@ export default function Dashboard() {
 //           >
 //             <button
 //               onClick={() => setSelected(null)}
-//               className="chip-interactive"
 //               style={{
+//                 display: "inline-flex",
+//                 alignItems: "center",
+//                 gap: 6,
 //                 padding: "6px 16px",
-//                 borderRadius: 99,
+//                 borderRadius: 20,
 //                 fontSize: 12,
 //                 fontWeight: 600,
 //                 cursor: "pointer",
@@ -873,53 +969,65 @@ export default function Dashboard() {
 //                 color: selected === null ? "#ffffff" : "#475569",
 //                 border:
 //                   selected === null ? "1px solid #0f172a" : "1px solid #e2e8f0",
-//                 boxShadow:
-//                   selected === null
-//                     ? "0 2px 8px rgba(15, 23, 42, 0.12)"
-//                     : "0 1px 2px rgba(0,0,0,0.02)",
+//                 boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
 //                 transition: "all 0.15s ease",
 //               }}
 //             >
-//               🎯 All Targets
+//               <span>🎯</span> All Targets
 //             </button>
 
 //             {competitors.map((c) => {
 //               const isSelected = selected === c.name;
 //               return (
-//                 <button
+//                 <div
 //                   key={c.name}
-//                   onClick={() => setSelected(isSelected ? null : c.name)}
-//                   className="chip-interactive"
 //                   style={{
-//                     padding: "6px 16px",
-//                     borderRadius: 99,
-//                     fontSize: 12,
-//                     fontWeight: 600,
-//                     cursor: "pointer",
-//                     background: isSelected ? "#eef2ff" : "#ffffff",
-//                     color: isSelected ? "#4f46e5" : "#475569",
+//                     display: "inline-flex",
+//                     alignItems: "center",
+//                     gap: 2,
+//                     background: isSelected ? "#0f172a" : "#ffffff",
+//                     borderRadius: 20,
+//                     padding: "2px 4px",
 //                     border: isSelected
-//                       ? "1px solid #c7d2fe"
+//                       ? "1px solid #0f172a"
 //                       : "1px solid #e2e8f0",
+//                     boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
 //                     transition: "all 0.15s ease",
 //                   }}
 //                 >
-//                   {c.name}
-//                 </button>
+//                   <button
+//                     onClick={() =>
+//                       navigate(`/company/${encodeURIComponent(c.name)}`)
+//                     }
+//                     style={{
+//                       padding: "4px 12px",
+//                       borderRadius: 20,
+//                       fontSize: 12,
+//                       fontWeight: 600,
+//                       cursor: "pointer",
+//                       background: "transparent",
+//                       color: isSelected ? "#ffffff" : "#475569",
+//                       border: "none",
+//                       transition: "color 0.15s ease",
+//                     }}
+//                   >
+//                     {c.name}
+//                   </button>
+//                 </div>
 //               );
 //             })}
 //           </div>
-//         </section>
+//         </div>
 
-//         {/* Search and Source Dropdown Bar */}
-//         <section style={{ marginBottom: 20, width: "100%" }}>
+//         {/* Filter Input */}
+//         <div style={{ marginBottom: 20 }}>
 //           <FilterBar
 //             search={search}
 //             setSearch={setSearch}
 //             sourceFilter={sourceFilter}
 //             setSourceFilter={setSourceFilter}
 //           />
-//         </section>
+//         </div>
 
 //         {/* Feed Header */}
 //         <div
@@ -931,32 +1039,28 @@ export default function Dashboard() {
 //             padding: "0 2px",
 //           }}
 //         >
-//           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+//           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+//             <Activity size={15} color="#6366f1" />
 //             <h2
 //               style={{
-//                 fontSize: 14,
+//                 fontSize: 13,
 //                 fontWeight: 700,
-//                 color: "#0f172a",
+//                 color: "#1e293b",
 //                 margin: 0,
-//                 display: "flex",
-//                 alignItems: "center",
-//                 gap: 8,
 //               }}
 //             >
-//               <Activity size={15} color="#6366f1" />
 //               {selected
-//                 ? `${selected} Intelligence Stream`
+//                 ? `${selected} Core Feed Reports`
 //                 : "Aggregated Intelligence Feed"}
 //             </h2>
 //             <span
 //               style={{
-//                 color: "#4f46e5",
+//                 color: "#6366f1",
 //                 background: "#eef2ff",
 //                 fontSize: 11,
-//                 fontWeight: 700,
+//                 fontWeight: 600,
 //                 padding: "2px 8px",
-//                 borderRadius: 99,
-//                 border: "1px solid #c7d2fe",
+//                 borderRadius: 12,
 //               }}
 //             >
 //               {filteredReports.length} reports
@@ -969,23 +1073,12 @@ export default function Dashboard() {
 //               display: "flex",
 //               alignItems: "center",
 //               gap: 6,
-//               background: "#ffffff",
-//               border: "1px solid #e2e8f0",
-//               borderRadius: 8,
-//               padding: "6px 12px",
+//               background: "transparent",
+//               border: "none",
 //               fontSize: 12,
 //               fontWeight: 600,
-//               color: "#475569",
+//               color: "#64748b",
 //               cursor: "pointer",
-//               transition: "all 0.15s ease",
-//             }}
-//             onMouseOver={(e) => {
-//               e.currentTarget.style.background = "#f8fafc";
-//               e.currentTarget.style.color = "#0f172a";
-//             }}
-//             onMouseOut={(e) => {
-//               e.currentTarget.style.background = "#ffffff";
-//               e.currentTarget.style.color = "#475569";
 //             }}
 //           >
 //             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />{" "}
@@ -993,15 +1086,13 @@ export default function Dashboard() {
 //           </button>
 //         </div>
 
-//         {/* Intelligence Feed List Container */}
-//         <section
+//         {/* Feed Card Section */}
+//         <div
 //           style={{
-//             width: "100%",
-//             boxSizing: "border-box",
 //             background: "#ffffff",
-//             borderRadius: 12,
-//             border: "1px solid #e2e8f0",
-//             boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+//             borderRadius: 14,
+//             border: "1px solid #f1f5f9",
+//             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
 //             overflow: "hidden",
 //           }}
 //         >
@@ -1010,8 +1101,8 @@ export default function Dashboard() {
 //             loading={loading}
 //             onRunCompany={handleRunCompany}
 //           />
-//         </section>
-//       </main>
+//         </div>
+//       </div>
 
 //       {/* Modals & Overlays */}
 //       {showModal && (
@@ -1027,14 +1118,13 @@ export default function Dashboard() {
 //       {stepperOpen && isRunAll && (
 //         <MinimalProgressView
 //           competitors={competitors.map((c) => c.name)}
-//           runId={currentRunId}
+//           runId={activeRunId}
 //           onClose={() => {
 //             setStepperOpen(false);
 //             setIsRunAll(false);
 //           }}
 //           onDone={() => {
 //             refetch();
-//             setCurrentRunId(null);
 //           }}
 //         />
 //       )}
@@ -1043,7 +1133,7 @@ export default function Dashboard() {
 //         <AgentStepper
 //           running={stepperOpen}
 //           competitor={stepperComp}
-//           runId={currentRunId}
+//           runId={activeRunId}
 //           onClose={() => {
 //             setStepperOpen(false);
 //             refetch();
@@ -1056,10 +1146,10 @@ export default function Dashboard() {
 //           open={showLogs}
 //           onClose={() => {
 //             setShowLogs(false);
-//             setCurrentRunId(null);
+//             setActiveRunId(null);
 //             refetch();
 //           }}
-//           runId={currentRunId}
+//           runId={activeRunId}
 //         />
 //       )}
 //     </div>

@@ -20,7 +20,9 @@ load_dotenv()
 llm = ChatGroq(
     model="openai/gpt-oss-20b",  # best free model
     api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0
+    temperature=0,
+    max_retries=3,      # ← retry add karo
+    request_timeout=30  
 )
 
 
@@ -167,48 +169,53 @@ def merge_node(state: AgentState) -> dict:
 def analyzer_node(state: AgentState) -> dict:
     from db.mongo_client import get_last_report
     log(f"[Node: Analyzer] Comparing with previous report...", "info")
+    
     old_data = get_last_report(state["competitor_name"], state["user_id"])
     has_prev = "No previous" not in old_data
-    log(f"[Node: Analyzer] Previous report: {'found' if has_prev else 'not found (first run)'}", "info")
+    log(f"[Node: Analyzer] Previous report: {'found' if has_prev else 'not found'}", "info")
 
     prompt = f"""You are a competitive intelligence analyst tracking {state['competitor_name']}.
 
-    === PREVIOUS REPORT ===
-    {old_data[:1500]}
+=== PREVIOUS REPORT ===
+{old_data[:1500]}
 
-    === NEW DATA COLLECTED TODAY ===
-    {state['clean_data'][:2500]}
+=== NEW DATA COLLECTED TODAY ===
+{state['clean_data'][:2500]}
 
-    Your task: Compare new data with previous report and identify significant changes.
+Your task: Compare new data with previous report and identify significant changes.
 
-    OUTPUT FORMAT — follow this EXACTLY:
+OUTPUT FORMAT — follow this EXACTLY:
 
-    **[Category Name]**
-    What changed: [One clear sentence — specific, factual]
-    Impact: [Why it matters to business — max 20 words]
+**[Category Name]**
+What changed: [2-3 clear sentences — specific, factual, include dates/numbers if available]
+Impact: [2-3 sentences explaining business significance — who is affected and how]
 
-    **[Category Name]**
-    What changed: [One clear sentence]
-    Impact: [Why it matters]
-
-    Rules:
-    - Maximum 5 categories
-    - Categories can be: Pricing, Product Launch, Partnership, Leadership, Campaign, Strategy, Acquisition
-    - Only include categories where something actually changed
-    - Use numbers where available (%, ₹, counts, timeframes)
-    - No markdown tables, no bullet sub-points, no headers with ===
-    - If nothing changed: write only "No significant changes detected this cycle"
-    - Do NOT repeat information from previous report
-    - Plain English — a non-technical business person should understand it"""
+Rules:
+- Minimum 3, Maximum 6 categories
+- Categories: Pricing, Product Launch, Partnership, Leadership, Campaign, Strategy, Acquisition, Financial
+- Only include categories where something ACTUALLY changed
+- What changed: Be specific — mention company names, dates, percentages, product names
+- Impact: Explain WHY it matters — competitor threat, market shift, customer effect
+- No markdown tables, no bullet sub-points
+- Do NOT repeat information already in previous report
+- If truly nothing changed: write only "No significant changes detected this cycle"
+- Write like a business journalist — clear, factual, engaging"""
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        analysis_content = response.content
-    except Exception as e:
-        analysis_content = f"Error during analysis generation: {str(e)}"
-        log(f"[Node: Analyzer Error] {analysis_content}", "error")
+        analysis_content = response.content.strip()
 
-    log(f"[Node: Analyzer] Analysis complete — {len(analysis_content)} chars", "info")
+        # ← Empty response handle karo
+        if not analysis_content:
+            log(f"[Node: Analyzer] Empty response from LLM — using fallback", "warn")
+            analysis_content = "No significant changes detected this cycle"
+
+        log(f"[Node: Analyzer] Analysis complete — {len(analysis_content)} chars", "info")
+
+    except Exception as e:
+        analysis_content = f"Analysis unavailable: {str(e)}"
+        log(f"[Node: Analyzer Error] {str(e)}", "error")
+
     return {"analysis": analysis_content}
 
 

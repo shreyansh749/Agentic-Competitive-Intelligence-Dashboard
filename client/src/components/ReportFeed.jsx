@@ -20,10 +20,7 @@ const SourceIcon = ({ source }) => {
 
 // **Helper Function:** Yeh function string mein se `**text**` ko detect karke use actual HTML bold tags <strong> mein convert karega bina markdown layout ko tode.
 function renderAnalysis(text) {
-  if (!text) return null;
-
-  // "No significant changes" case
-  if (text.includes("No significant changes")) {
+  if (!text || text.includes("No significant changes")) {
     return (
       <div
         style={{
@@ -390,18 +387,23 @@ function ReportCard({ report, onRun }) {
             )}
 
             {activeTab === "analysis" && (
-              <div
-                style={{
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 12,
-                  padding: "16px",
-                  maxHeight: 380,
-                  overflowY: "auto",
-                  boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.03)",
-                }}
-              >
-                {renderAnalysis(report.analysis)}
+              <div style={{ padding: "16px 18px" }}>
+                {report.analysis && report.analysis.trim() ? (
+                  renderAnalysis(report.analysis)
+                ) : (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      background: "#f9fafb",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      color: "#9ca3af",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No analysis available for this report.
+                  </div>
+                )}
               </div>
             )}
           </div>

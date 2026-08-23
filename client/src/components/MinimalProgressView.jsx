@@ -1,4 +1,3 @@
-// src/components/MinimalProgressView.jsx
 import { useEffect, useState } from "react";
 import { CheckCircle, Loader, XCircle, Clock } from "lucide-react";
 
@@ -13,8 +12,88 @@ export default function MinimalProgressView({
   );
   const [done, setDone] = useState(false);
 
+  // useEffect(() => {
+  //   if (!runId) return;
+
+  //   // Reset on new run
+  //   setStatus(Object.fromEntries(competitors.map((c) => [c, "queued"])));
+  //   setDone(false);
+
+  //   const es = new EventSource(`http://localhost:5000/api/logs/${runId}`);
+
+  //   es.onmessage = (event) => {
+  //     try {
+  //       const entry = JSON.parse(event.data);
+  //       const msg = entry.message || "";
+
+  //       console.log("[SSE]", msg); // ← temporarily add karo
+  //       // ── Done signal — pehle check karo ───────────────────
+  //       if (
+  //         msg.includes("All done —") ||
+  //         msg.startsWith("__STATUS__") ||
+  //         entry.level === "done"
+  //       ) {
+  //         // Saare remaining competitors force complete karo
+  //         setStatus((prev) => {
+  //           const updated = { ...prev };
+  //           Object.keys(updated).forEach((name) => {
+  //             if (updated[name] === "running" || updated[name] === "queued") {
+  //               updated[name] = "completed";
+  //             }
+  //           });
+  //           return updated;
+  //         });
+  //         setDone(true);
+  //         es.close();
+  //         return;
+  //       }
+
+  //       // ── Per-competitor status track ───────────────────────
+  //       competitors.forEach((name) => {
+  //         // Running
+  //         if (
+  //           msg.includes(`Dispatching: ${name}`) ||
+  //           msg.includes(`Starting run for ${name}`)
+  //         ) {
+  //           setStatus((prev) => ({ ...prev, [name]: "running" }));
+  //         }
+
+  //         // Completed — saare possible patterns
+  //         if (
+  //           msg.includes(`Completed: ${name}`) ||
+  //           msg.includes(`Complete for ${name}`) ||
+  //           msg.includes(`completed for ${name}`)
+  //         ) {
+  //           setStatus((prev) => ({ ...prev, [name]: "completed" }));
+  //         }
+
+  //         // Failed
+  //         if (
+  //           msg.includes(`ERROR for ${name}`) ||
+  //           msg.includes(`failed for ${name}`) ||
+  //           msg.includes(`Failed for ${name}`)
+  //         ) {
+  //           setStatus((prev) => ({ ...prev, [name]: "failed" }));
+  //         }
+  //       });
+  //     } catch (e) {
+  //       console.error("[MinimalProgressView] Parse error:", e);
+  //     }
+  //   };
+
+  //   es.onerror = () => {
+  //     console.error("[MinimalProgressView] SSE error");
+  //     es.close();
+  //   };
+
+  //   return () => es.close();
+  // }, [runId]);
+
   useEffect(() => {
     if (!runId) return;
+
+    setStatus(Object.fromEntries(competitors.map((c) => [c, "queued"])));
+    setDone(false);
 
     const es = new EventSource(`http://localhost:5000/api/logs/${runId}`);
 
@@ -22,21 +101,28 @@ export default function MinimalProgressView({
       try {
         const entry = JSON.parse(event.data);
         const msg = entry.message || "";
-        const level = entry.level || "";
+
+        console.log("[SSE]", msg); // ← temporarily add karo
 
         // Done signal
         if (
-          msg.startsWith("__STATUS__") ||
-          msg.includes("__STATUS__done") ||
-          level === "done" ||
-          msg.includes("All done —")
+          msg.includes("All done —") ||
+          msg.includes("__STATUS__") ||
+          entry.level === "done"
         ) {
+          setStatus((prev) => {
+            const updated = { ...prev };
+            Object.keys(updated).forEach((k) => {
+              if (updated[k] !== "failed") updated[k] = "completed";
+            });
+            return updated;
+          });
           setDone(true);
           es.close();
           return;
         }
 
-        // Competitor status track karo from logs
+        // Per competitor tracking
         competitors.forEach((name) => {
           if (
             msg.includes(`Dispatching: ${name}`) ||
@@ -46,7 +132,7 @@ export default function MinimalProgressView({
           }
           if (
             msg.includes(`Completed: ${name}`) ||
-            msg.includes(`Complete for ${name}`) 
+            msg.includes(`Complete for ${name}`)
           ) {
             setStatus((prev) => ({ ...prev, [name]: "completed" }));
           }
@@ -57,19 +143,13 @@ export default function MinimalProgressView({
             setStatus((prev) => ({ ...prev, [name]: "failed" }));
           }
         });
-
-        // All done check
-        if (msg.includes("All done") || msg.includes("__STATUS__done")) {
-          setDone(true);
-          es.close();
-        }
       } catch (e) {}
     };
 
     es.onerror = () => es.close();
     return () => es.close();
-  }, [runId]);
-
+  }, [runId]); // ← SIRF runId dependency — competitors nahi
+  
   const total = competitors.length;
   const completed = Object.values(status).filter(
     (s) => s === "completed",
@@ -88,11 +168,11 @@ export default function MinimalProgressView({
   const getStyle = (s) => ({
     background:
       s === "completed"
-        ? "rgba(16,185,129,0.1)"
+        ? "rgba(16,185,129,0.12)"
         : s === "running"
-          ? "rgba(96,165,250,0.1)"
+          ? "rgba(96,165,250,0.12)"
           : s === "failed"
-            ? "rgba(239,68,68,0.1)"
+            ? "rgba(239,68,68,0.12)"
             : "rgba(107,114,128,0.08)",
     color:
       s === "completed"
@@ -121,7 +201,7 @@ export default function MinimalProgressView({
           background: "#111827",
           borderRadius: 14,
           padding: "28px 32px",
-          width: 420,
+          width: 440,
           boxShadow: "0 25px 60px rgba(0,0,0,0.4)",
         }}
       >
@@ -136,7 +216,7 @@ export default function MinimalProgressView({
         </div>
 
         {/* Progress bar */}
-        <div style={{ marginBottom: 8 }}>
+        <div style={{ marginBottom: 20 }}>
           <div
             style={{
               display: "flex",
@@ -165,8 +245,8 @@ export default function MinimalProgressView({
                 width: `${percent}%`,
                 background:
                   failed > 0
-                    ? "linear-gradient(90deg, #10b981, #ef4444)"
-                    : "#10b981",
+                    ? "linear-gradient(90deg,#10b981,#ef4444)"
+                    : "linear-gradient(90deg,#10b981,#34d399)",
                 borderRadius: 99,
                 transition: "width 0.4s ease",
               }}
@@ -180,7 +260,7 @@ export default function MinimalProgressView({
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
             gap: 8,
-            marginTop: 20,
+            marginBottom: done ? 20 : 0,
           }}
         >
           {competitors.map((name) => {
@@ -196,6 +276,7 @@ export default function MinimalProgressView({
                   padding: "8px 12px",
                   borderRadius: 8,
                   background: style.background,
+                  transition: "background 0.3s ease",
                 }}
               >
                 {getIcon(s)}
@@ -215,7 +296,7 @@ export default function MinimalProgressView({
 
         {/* Done state */}
         {done && (
-          <div style={{ marginTop: 20 }}>
+          <div>
             <div
               style={{
                 background:
