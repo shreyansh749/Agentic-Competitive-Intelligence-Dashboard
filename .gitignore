@@ -17,3 +17,6 @@ __pycache__/
 
 # Build
 client/dist/
+
+**/Dockerfile
+docker-compose.yml
