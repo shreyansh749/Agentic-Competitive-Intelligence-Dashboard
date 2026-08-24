@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 scheduler = BlockingScheduler()
 
 def run_all_agents():
-    """Saare registered competitors ke liye agent run karo"""
+    """Run the agent for all registered competitors"""
     logger.info(f"[Scheduler] Starting run at {datetime.now(timezone.utc)}")
 
     competitors = get_all_competitors()
@@ -29,7 +29,7 @@ def run_all_agents():
 
     logger.info("[Scheduler] All agents complete.")
 
-# Roz subah 8AM IST (2:30 UTC)
+# Runs daily at 8AM IST (2:30 UTC)
 scheduler.add_job(
     run_all_agents,
     CronTrigger(hour=2, minute=30),

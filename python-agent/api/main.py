@@ -41,7 +41,7 @@ async def timing_middleware(request, call_next):
     print(f"[Timing] {request.method} {request.url.path} — {duration:.1f}ms")
     return response
 
-# ── Startup — indexes create karo ────────────────────────────────
+# ── Startup ────────────────────────────────
 @app.on_event("startup")
 async def startup():
     from db.mongo_client import create_indexes
@@ -93,7 +93,7 @@ async def remove_competitor(competitor_name: str, user_id: str = None):
             "user_id": user_id
         })
 
-        # Saare reports bhi delete
+        # delete competitor's reports
         result = await async_db.reports.delete_many({
             "competitor": competitor_name,
             "user_id":    user_id
@@ -151,7 +151,7 @@ async def add_competitor(comp: CompetitorIn):
     print(f"[Debug] Received competitor data: {comp.dict()}")
     await async_save_competitor(comp.dict())
 
-    # Cache invalidate — naya competitor add hua
+    # Cache invalidate — new competitor added
     cache.delete_pattern(f"competitors:{comp.user_id}")
     cache.delete_pattern(f"stats:{comp.user_id}")
     print(f"[Cache INVALIDATED] competitors + stats for user {comp.user_id}")
@@ -216,7 +216,7 @@ async def clear_reports(competitor_name: str, user_id: str = None):
             "user_id":    user_id
         })
 
-        # Cache invalidate — reports delete hue
+        # Cache invalidate — reports + stats are deleted 
         cache.delete_pattern(f"reports:{user_id}")
         cache.delete_pattern(f"stats:{user_id}")
         print(f"[Cache INVALIDATED] reports + stats after delete for {competitor_name}")
@@ -342,7 +342,7 @@ async def run_agent(
         "competitors": [c.get("name", "Unknown") for c in competitors]
     }
 
-# ── SSE Logs ──────────────────────────────────────────────────────
+# SSE Logs 
 @app.get("/logs/{run_id}")
 async def stream_logs(run_id: str):
     async def event_generator():

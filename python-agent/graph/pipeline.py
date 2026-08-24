@@ -3,16 +3,13 @@ from typing import TypedDict
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
-# LangGraph imports
 from langgraph.graph import StateGraph, END
 
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 
-# Tool Import
 from langchain_community.tools import DuckDuckGoSearchRun
 
-# Shared central logger module path to prevent loop crashes
 from graph.logger_store import active_agent_logs
 
 load_dotenv()
@@ -21,8 +18,8 @@ llm = ChatGroq(
     model="openai/gpt-oss-20b",  # best free model
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0,
-    max_retries=3,      # ← retry add karo
-    request_timeout=30  
+    max_retries=3,
+    request_timeout=30
 )
 
 
@@ -37,10 +34,9 @@ def log(message: str, level: str = "info"):
     global _current_run_id
     if _current_run_id:
         try:
-            # Agar storage me yeh runId nahi hai, toh init karo
             if _current_run_id not in active_agent_logs:
                 active_agent_logs[_current_run_id] = []
-                
+
             active_agent_logs[_current_run_id].append({
                 "time": datetime.now(timezone.utc).isoformat(),
                 "message": message,
@@ -48,7 +44,7 @@ def log(message: str, level: str = "info"):
             })
         except Exception as e:
             print(f"[Logger Error Context]: {str(e)}")
-            
+
     print(f"[Pipeline] {message}")
 
 # ── State Schema Definition ──────────────────────────────────────
@@ -169,7 +165,7 @@ def merge_node(state: AgentState) -> dict:
 def analyzer_node(state: AgentState) -> dict:
     from db.mongo_client import get_last_report
     log(f"[Node: Analyzer] Comparing with previous report...", "info")
-    
+
     old_data = get_last_report(state["competitor_name"], state["user_id"])
     has_prev = "No previous" not in old_data
     log(f"[Node: Analyzer] Previous report: {'found' if has_prev else 'not found'}", "info")
@@ -205,7 +201,6 @@ Rules:
         response = llm.invoke([HumanMessage(content=prompt)])
         analysis_content = response.content.strip()
 
-        # ← Empty response handle karo
         if not analysis_content:
             log(f"[Node: Analyzer] Empty response from LLM — using fallback", "warn")
             analysis_content = "No significant changes detected this cycle"
